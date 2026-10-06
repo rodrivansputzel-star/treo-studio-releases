@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Studio · Acessos</title>
+<!-- S1-servidor · painel admin (um arquivo, sem build). Abra direto (file://) ou hospede em qualquer site estático.
+     Também serve como página de "definir senha" dos convites/recuperação quando hospedado (ver docs/S1-SERVIDOR.md). -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --fundo: #f5f6f8; --cartao: #ffffff; --texto: #1f2933; --suave: #616e7c; --linha: #e1e4e8;
+    --acento: #1f2933; --acento-texto: #ffffff; --perigo: #b42318; --ok: #1a7f37; --aviso: #9a6700; --chip: #eef0f3;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fundo: #14171a; --cartao: #1c2024; --texto: #e6e8eb; --suave: #9aa4af; --linha: #2c3238;
+      --acento: #e6e8eb; --acento-texto: #14171a; --perigo: #ff7b72; --ok: #56d364; --aviso: #e3b341; --chip: #262b31; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--linha); background: var(--cartao); }
+  header h1 { font-size: 16px; font-weight: 600; margin: 0; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--linha); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .cartao h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+  .estreito { max-width: 400px; margin: 48px auto; }
+  label { display: block; font-size: 12px; color: var(--suave); margin-bottom: 4px; }
+  input, select { width: 100%; padding: 7px 9px; border: 1px solid var(--linha); border-radius: 6px; background: var(--fundo); color: var(--texto); font: inherit; }
+  .campo { margin-bottom: 12px; }
+  .linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .linha > .campo { flex: 1 1 160px; margin-bottom: 0; }
+  button { font: inherit; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--linha); background: var(--cartao); color: var(--texto); cursor: pointer; white-space: nowrap; }
+  button:hover { border-color: var(--suave); }
+  button.primario { background: var(--acento); color: var(--acento-texto); border-color: var(--acento); }
+  button.perigo { color: var(--perigo); }
+  button.mini { padding: 2px 8px; font-size: 12px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { padding: 8px 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; display: none; }
+  .msg.erro { display: block; color: var(--perigo); border: 1px solid var(--perigo); }
+  .msg.ok { display: block; color: var(--ok); border: 1px solid var(--ok); }
+  .suave { color: var(--suave); }
+  .pequeno { font-size: 12px; }
+  .tabela-rolagem { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th { font-size: 12px; font-weight: 600; color: var(--suave); }
+  tr.maquina td { background: var(--fundo); font-size: 13px; }
+  tr.maquina td:first-child { padding-left: 22px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--chip); border-radius: 10px; padding: 1px 8px; font-size: 12px; margin: 0 4px 4px 0; }
+  .chip button { border: 0; background: none; padding: 0 2px; color: var(--suave); }
+  .estado { font-size: 12px; font-weight: 600; }
+  .estado.ok { color: var(--ok); } .estado.bloq { color: var(--perigo); } .estado.pend { color: var(--aviso); }
+  .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+  [hidden] { display: none !important; }
+  .senha-caixa { border: 1px solid var(--ok); border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .senha-caixa .linha input { font: 600 16px/1.3 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .04em; }
+  .senha-caixa .aviso { color: var(--aviso); font-size: 12.5px; margin: 8px 0 0; }
+  details.secundario { margin-top: 14px; }
+  details.secundario summary { cursor: pointer; color: var(--suave); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Studio · Acessos</h1>
+  <div class="linha"><span id="quem" class="suave pequeno"></span><button id="sair" class="mini" hidden>Sair</button></div>
+</header>
+
+<main>
+  <!-- 1. Conexão com o projeto Supabase (URL e anon key são públicas por natureza) -->
+  <section id="v-conexao" class="cartao estreito" hidden>
+    <h2>Conectar ao projeto</h2>
+    <p class="suave pequeno">No Supabase: <em>Project Settings › API</em>. Fica guardado só neste navegador.</p>
+    <div class="campo"><label for="c-url">Project URL</label><input id="c-url" placeholder="https://xxxx.supabase.co"></div>
+    <div class="campo"><label for="c-anon">anon / publishable key</label><input id="c-anon" placeholder="eyJ… ou sb_publishable_…"></div>
+    <button id="c-salvar" class="primario">Salvar</button>
+    <div id="c-msg" class="msg"></div>
+  </section>
+
+  <!-- 2. Definir senha (link do convite ou da recuperação) -->
+  <section id="v-senha" class="cartao estreito" hidden>
+    <h2 id="s-titulo">Definir sua senha</h2>
+    <p class="suave pequeno" id="s-email"></p>
+    <div class="campo"><label for="s-1">Nova senha (mínimo 10 caracteres)</label><input id="s-1" type="password" autocomplete="new-password"></div>
+    <div class="campo"><label for="s-2">Repita a senha</label><input id="s-2" type="password" autocomplete="new-password"></div>
+    <button id="s-salvar" class="primario">Salvar senha</button>
+    <div id="s-msg" class="msg"></div>
+  </section>
+
+  <!-- 3. Login -->
+  <section id="v-login" class="cartao estreito" hidden>
+    <h2>Entrar</h2>
+    <form id="l-form">
+      <div class="campo"><label for="l-email">E-mail</label><input id="l-email" type="email" autocomplete="username" required></div>
+      <div class="campo"><label for="l-senha">Senha</label><input id="l-senha" type="password" autocomplete="current-password" required></div>
+      <div class="linha"><button class="primario" type="submit">Entrar</button><button type="button" id="l-esqueci">Esqueci a senha</button></div>
+    </form>
+    <div id="l-msg" class="msg"></div>
+    <p class="pequeno suave" style="margin-top:16px"><a href="#" id="l-trocar" class="suave">Trocar projeto</a></p>
+  </section>
+
+  <!-- 4. Painel -->
+  <section id="v-painel" hidden>
+    <div class="cartao">
+      <h2>Novo usuário</h2>
+      <form id="i-form" class="linha">
+        <div class="campo"><label for="i-email">E-mail</label><input id="i-email" type="email" required></div>
+        <div class="campo"><label for="i-nome">Nome</label><input id="i-nome"></div>
+        <div class="campo" style="flex:0 1 140px"><label for="i-edicao">Edição</label><select id="i-edicao" required><option value="treo">TREO Studio</option><option value="rj">RJ StudioRP</option><option value="roboflexx">Roboflexx StudioRP</option><option value="vinter">Vinter StudioRP</option><option value="projectmaq">Projectmaq StudioRP</option></select></div>
+        <div class="campo"><label for="i-senha">Senha provisória (opcional)</label><input id="i-senha" type="text" autocomplete="off" spellcheck="false" placeholder="em branco = gerar uma forte"></div>
+        <button class="primario" type="submit" id="i-criar">Criar usuário (senha provisória)</button>
+      </form>
+      <p class="pequeno suave">Sem e-mail: a conta já nasce confirmada. Entregue a senha provisória à pessoa; no 1º login o app obriga a criar a própria senha.</p>
+      <details class="secundario">
+        <summary>Convidar por e-mail (precisa de SMTP próprio)</summary>
+        <p class="pequeno suave">O e-mail padrão do Supabase (plano gratuito) não entrega convites para fora da equipe do projeto. Use só depois de configurar um SMTP próprio (docs/S1-SERVIDOR.md, passo 3).</p>
+        <button type="button" id="i-convidar">Convidar por e-mail</button>
+      </details>
+      <div id="i-msg" class="msg"></div>
+      <div id="p-caixa" class="senha-caixa" hidden>
+        <div class="pequeno" id="p-titulo"></div>
+        <div class="linha" style="margin-top:8px">
+          <div class="campo"><input id="p-senha" readonly aria-label="Senha provisória"></div>
+          <button type="button" id="p-copiar" class="primario">Copiar</button>
+          <button type="button" id="p-fechar">Já entreguei — esconder</button>
+        </div>
+        <p class="aviso">Esta senha aparece só agora. Entregue-a por um canal seguro (pessoalmente, ligação ou mensagem temporária) — nunca junto com o e-mail de login na mesma mensagem. No 1º login o app pede para criar uma senha nova.</p>
+        <div id="p-msg" class="msg"></div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Regras</h2>
+      <div class="linha">
+        <div class="campo" style="flex:0 1 180px"><label for="g-dias">Dias offline (validade)</label><input id="g-dias" type="number" min="1" max="90"></div>
+        <div class="campo" style="flex:0 1 180px"><label for="g-max">Máx. computadores/usuário</label><input id="g-max" type="number" min="1" max="50"></div>
+        <div class="campo" style="flex:0 1 180px"><label for="g-min">Versão mínima do app</label><input id="g-min" placeholder="0.0.0"></div>
+        <button id="g-salvar">Salvar regras</button>
+      </div>
+      <p class="pequeno suave">Bloqueios e mudanças valem na próxima renovação: o app para quando a licença atual vencer (até “dias offline”).</p>
+      <div id="g-msg" class="msg"></div>
+    </div>
+
+    <div class="cartao">
+      <div class="linha" style="justify-content:space-between;margin-bottom:10px">
+        <h2 style="margin:0">Usuários e computadores</h2>
+        <div class="linha"><input id="f-busca" placeholder="Buscar nome ou e-mail" style="width:220px"><button id="f-atualizar">Atualizar</button></div>
+      </div>
+      <div class="tabela-rolagem">
+        <table>
+          <thead><tr><th>Usuário</th><th>Situação</th><th>Edições</th><th>Último login</th><th>Licença até</th><th>Termo</th><th></th></tr></thead>
+          <tbody id="t-corpo"><tr><td colspan="7" class="suave">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="t-msg" class="msg"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+'use strict';
+// Preencha aqui para não precisar digitar (são públicas). Em branco → o painel pergunta e guarda no navegador.
+const CONFIG = { supabaseUrl: 'https://dlqfgywxumwbakiqzjvc.supabase.co', supabaseAnonKey: '' /* sb_publishable_… */ };
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const dataHora = (iso) => iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+const data = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
+function guarda(k, v) { try { localStorage.setItem(k, v); } catch {} }
+function le(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } }
+function avisa(id, texto, tipo = 'erro') { const el = $(id); el.textContent = texto; el.className = 'msg ' + (texto ? tipo : ''); }
+function mostra(v) { for (const id of ['v-conexao', 'v-senha', 'v-login', 'v-painel']) $(id).hidden = id !== v; }
+
+let sb = null, url = '', anon = '', dados = null;
+const hashInicial = new URLSearchParams(location.hash.slice(1));
+const veioDeLink = ['invite', 'recovery'].includes(hashInicial.get('type'));
+const hospedado = /^https?:$/.test(location.protocol);
+
+function conecta() {
+  url = (CONFIG.supabaseUrl || le('s1.url')).replace(/\/+$/, '');
+  anon = CONFIG.supabaseAnonKey || le('s1.anon');
+  if (!url || !anon) { $('c-url').value = url; $('c-anon').value = anon; mostra('v-conexao'); return false; }
+  sb = window.supabase.createClient(url, anon, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'implicit' } });
+  return true;
+}
+
+async function chamaAdmin(corpo) {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) throw new Error('Sessão expirada. Entre novamente.');
+  const r = await fetch(url + '/functions/v1/admin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token, apikey: anon },
+    body: JSON.stringify(corpo),
+  });
+  let j = null; try { j = await r.json(); } catch {}
+  if (!r.ok || !j || j.ok !== true) throw Object.assign(new Error((j && j.mensagem) || ('Falha HTTP ' + r.status)), { codigo: j && j.erro });
+  return j;
+}
+
+// ───── conexão
+$('c-salvar').onclick = () => {
+  const u = $('c-url').value.trim(), a = $('c-anon').value.trim();
+  if (!/^https:\/\/.+/.test(u) || a.length < 20) return avisa('c-msg', 'Confira a URL (https://…) e a chave.');
+  guarda('s1.url', u); guarda('s1.anon', a); inicia();
+};
+$('l-trocar').onclick = (e) => { e.preventDefault(); guarda('s1.url', ''); guarda('s1.anon', ''); CONFIG.supabaseUrl = CONFIG.supabaseAnonKey = ''; conecta(); };
+
+// ───── senha (convite / recuperação / senha provisória do próprio admin)
+let senhaObrigatoria = false;
+async function telaSenha(provisoria = false) {
+  senhaObrigatoria = provisoria;
+  const { data: { user } } = await sb.auth.getUser();
+  $('s-titulo').textContent = provisoria ? 'Crie sua senha' : 'Definir sua senha';
+  $('s-email').textContent = (user ? 'Conta: ' + user.email : '') + (provisoria ? ' — você entrou com uma senha provisória; crie a sua para continuar.' : '');
+  $('s-salvar').hidden = false;
+  mostra('v-senha');
+}
+$('s-salvar').onclick = async () => {
+  const a = $('s-1').value, b = $('s-2').value;
+  if (a.length < 10) return avisa('s-msg', 'A senha precisa de pelo menos 10 caracteres.');
+  if (a !== b) return avisa('s-msg', 'As senhas não conferem.');
+  $('s-salvar').disabled = true;
+  const { error } = await sb.auth.updateUser({ password: a, data: { trocarSenha: false } });
+  $('s-salvar').disabled = false;
+  if (error) return avisa('s-msg', error.code === 'same_password' ? 'A nova senha precisa ser diferente da anterior.' : error.code === 'weak_password' ? 'Senha fraca demais. Use uma mais longa, com letras, números e símbolos.' : 'Não deu certo: ' + error.message);
+  if (senhaObrigatoria) { await sb.auth.refreshSession(); senhaObrigatoria = false; avisa('s-msg', ''); $('s-1').value = $('s-2').value = ''; return entrouOuNao(); }
+  history.replaceState(null, '', location.pathname + location.search);
+  avisa('s-msg', 'Senha definida. Agora é só entrar no aplicativo Studio com seu e-mail e esta senha.', 'ok');
+  $('s-salvar').hidden = true;
+  setTimeout(() => entrouOuNao(), 2500);
+};
+
+// ───── login
+$('l-form').onsubmit = async (e) => {
+  e.preventDefault();
+  avisa('l-msg', '');
+  const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-senha').value });
+  if (error) return avisa('l-msg', error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message);
+  $('l-senha').value = '';
+  entrouOuNao();
+};
+$('l-esqueci').onclick = async () => {
+  const email = $('l-email').value.trim();
+  if (!email) return avisa('l-msg', 'Digite seu e-mail acima primeiro.');
+  const { error } = await sb.auth.resetPasswordForEmail(email, hospedado ? { redirectTo: location.origin + location.pathname } : {});
+  avisa('l-msg', error ? error.message : 'Se o e-mail estiver cadastrado, chegará um link para criar nova senha.', error ? 'erro' : 'ok');
+};
+$('sair').onclick = async () => { await sb.auth.signOut(); entrouOuNao(); };
+
+async function entrouOuNao() {
+  const { data: { session } } = await sb.auth.getSession();
+  $('sair').hidden = !session;
+  $('quem').textContent = session ? session.user.email : '';
+  if (!session) return mostra('v-login');
+  if (session.user.user_metadata && session.user.user_metadata.trocarSenha === true) return telaSenha(true);
+  try {
+    await chamaAdmin({ acao: 'quem_sou' });
+  } catch (e) {
+    mostra('v-login');
+    return avisa('l-msg', e.codigo === 'nao_admin' ? 'Esta conta não é administradora. Para usar o Studio, entre pelo aplicativo.' : e.message);
+  }
+  mostra('v-painel');
+  $('i-edicao').value = le('s1.edicao') || 'treo';
+  carrega();
+}
+
+// ───── painel
+async function carrega() {
+  avisa('t-msg', '');
+  try { dados = await chamaAdmin({ acao: 'listar' }); } catch (e) { return avisa('t-msg', e.message); }
+  const c = dados.configEfetiva;
+  $('g-dias').value = c.diasOffline; $('g-max').value = c.maxMaquinas; $('g-min').value = c.minVersao;
+  desenha();
+}
+
+function situacao(u) {
+  if (u.bloqueado) return '<span class="estado bloq">Bloqueado</span>';
+  if (u.trocar_senha) return '<span class="estado pend" title="Ainda não criou a própria senha">Senha provisória</span>';
+  if (!u.confirmado_em && !u.ultimo_login) return '<span class="estado pend">Convite pendente</span>';
+  return '<span class="estado ok">Ativo</span>';
+}
+
+function desenha() {
+  const busca = $('f-busca').value.trim().toLowerCase();
+  const lista = dados.usuarios
+    .filter((u) => !busca || (u.email + ' ' + u.nome).toLowerCase().includes(busca))
+    .sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email, 'pt-BR'));
+  if (!lista.length) { $('t-corpo').innerHTML = '<tr><td colspan="7" class="suave">Nenhum usuário.</td></tr>'; return; }
+  const agora = Date.now();
+  $('t-corpo').innerHTML = lista.map((u) => {
+    const eds = u.edicoes.map((e) => `<span class="chip" title="${esc((e.recursos || []).join(', '))}">${esc(e.edicao)}<button title="Retirar edição" data-a="retirar_edicao" data-u="${esc(u.id)}" data-e="${esc(e.edicao)}">×</button></span>`).join('')
+      + `<button class="mini" data-a="liberar_edicao" data-u="${esc(u.id)}">+ edição</button>`;
+    const venc = u.licenca_ate ? (Date.parse(u.licenca_ate) < agora ? ' <span class="estado bloq">(vencida)</span>' : '') : '';
+    const linhaU = `<tr>
+      <td><strong>${esc(u.nome || '—')}</strong>${u.admin ? ' <span class="chip">admin</span>' : ''}<br><span class="suave pequeno">${esc(u.email)}</span></td>
+      <td>${situacao(u)}</td>
+      <td>${eds}</td>
+      <td class="pequeno">${dataHora(u.ultimo_login)}</td>
+      <td class="pequeno">${data(u.licenca_ate)}${venc}</td>
+      <td class="pequeno">${esc(u.termo_aceito || '—')}${u.termo_aceito_em ? '<br><span class="suave">' + data(u.termo_aceito_em) + '</span>' : ''}</td>
+      <td><div class="acoes">
+        <button class="mini" data-a="renomear_usuario" data-u="${esc(u.id)}">Renomear</button>
+        <button class="mini" data-a="redefinir_senha" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="Gera uma nova senha provisória; o app pede para trocar no próximo login">Redefinir senha</button>
+        <button class="mini ${u.bloqueado ? '' : 'perigo'}" data-a="bloquear_usuario" data-u="${esc(u.id)}" data-v="${u.bloqueado ? 'false' : 'true'}">${u.bloqueado ? 'Desbloquear' : 'Bloquear'}</button>
+        ${u.admin ? '' : `<button class="mini perigo" data-a="excluir_usuario" data-u="${esc(u.id)}" data-email="${esc(u.email)}">Excluir</button>`}
+      </div></td></tr>`;
+    const linhasM = u.maquinas.map((m) => `<tr class="maquina">
+      <td>↳ ${esc(m.nome || 'sem nome')}<br><span class="suave pequeno" title="${esc(m.hash)}">${esc(m.hash.slice(0, 12))}…</span></td>
+      <td>${m.bloqueada ? '<span class="estado bloq">Bloqueado</span>' : '<span class="estado ok">Liberado</span>'}</td>
+      <td class="pequeno">app ${esc(m.versao_app || '?')}</td>
+      <td class="pequeno">visto ${dataHora(m.ultima_vez)}</td>
+      <td class="pequeno">${data(m.ultima_licenca && m.ultima_licenca.expira)}</td>
+      <td class="pequeno suave">desde ${data(m.criada_em)}</td>
+      <td><div class="acoes">
+        <button class="mini ${m.bloqueada ? '' : 'perigo'}" data-a="bloquear_maquina" data-m="${esc(m.id)}" data-v="${m.bloqueada ? 'false' : 'true'}">${m.bloqueada ? 'Desbloquear' : 'Bloquear'}</button>
+        <button class="mini" data-a="remover_maquina" data-m="${esc(m.id)}" title="Libera a vaga; se o computador voltar, entra como novo">Remover</button>
+      </div></td></tr>`).join('');
+    return linhaU + linhasM;
+  }).join('');
+}
+
+$('t-corpo').onclick = async (ev) => {
+  const b = ev.target.closest('button[data-a]');
+  if (!b) return;
+  const a = b.dataset.a, corpo = { acao: a };
+  if (b.dataset.u) corpo.usuario = b.dataset.u;
+  if (b.dataset.m) corpo.maquina = b.dataset.m;
+  if (a === 'bloquear_usuario') corpo.bloqueado = b.dataset.v === 'true';
+  if (a === 'bloquear_maquina') corpo.bloqueada = b.dataset.v === 'true';
+  if (a === 'retirar_edicao') { if (!confirm(`Retirar a edição "${b.dataset.e}"? O app para ao vencer a licença atual.`)) return; corpo.edicao = b.dataset.e; }
+  if (a === 'liberar_edicao') { const e = prompt('Edição a liberar (treo, rj, roboflexx, vinter ou projectmaq):', le('s1.edicao')); if (!e) return; corpo.edicao = e.trim(); }
+  if (a === 'renomear_usuario') { const n = prompt('Nome:'); if (!n) return; corpo.nome = n.trim(); }
+  if (a === 'redefinir_senha' && !confirm(`Gerar uma nova senha provisória para ${b.dataset.email}?\nA senha atual deixa de valer. A licença já emitida continua até vencer; no próximo login o app pede para criar uma senha nova.`)) return;
+  if (a === 'remover_maquina' && !confirm('Remover este computador da lista? Libera a vaga; a licença dele vale até vencer.')) return;
+  if (a === 'excluir_usuario') {
+    const c = prompt(`Excluir DEFINITIVAMENTE a conta e todos os dados (perfil, computadores, histórico)?\nPara confirmar, digite o e-mail: ${b.dataset.email}`);
+    if (!c) return; corpo.confirmacao = c.trim();
+  }
+  b.disabled = true;
+  try {
+    const r = await chamaAdmin(corpo);
+    if (a === 'redefinir_senha') mostraSenha('Nova senha provisória de ' + b.dataset.email + ':', r.senha);
+    await carrega();
+  } catch (e) { avisa('t-msg', e.message); b.disabled = false; }
+};
+
+// ───── caixa da senha provisória (aparece UMA vez; nada fica guardado no navegador)
+function mostraSenha(titulo, senha) {
+  $('p-titulo').textContent = titulo;
+  $('p-senha').value = senha || '';
+  avisa('p-msg', '');
+  $('p-caixa').hidden = false;
+  $('p-caixa').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('p-senha').select();
+}
+$('p-copiar').onclick = async () => {
+  const v = $('p-senha').value;
+  try { await navigator.clipboard.writeText(v); avisa('p-msg', 'Copiada.', 'ok'); }
+  catch { $('p-senha').select(); try { document.execCommand('copy'); avisa('p-msg', 'Copiada.', 'ok'); } catch { avisa('p-msg', 'Não deu para copiar sozinho: selecione e copie (Cmd/Ctrl+C).'); } }
+};
+$('p-fechar').onclick = () => { $('p-senha').value = ''; $('p-caixa').hidden = true; };
+
+function corpoNovo(acao) {
+  const corpo = { acao, email: $('i-email').value.trim(), nome: $('i-nome').value.trim(), edicao: $('i-edicao').value.trim() };
+  if (!corpo.email || !$('i-email').checkValidity()) { avisa('i-msg', 'Digite um e-mail válido.'); return null; }
+  if (!corpo.edicao || !$('i-edicao').checkValidity()) { avisa('i-msg', 'Digite a edição (ex.: treo).'); return null; }
+  return corpo;
+}
+// padrão: cria a conta com senha provisória (sem e-mail)
+$('i-form').onsubmit = async (e) => {
+  e.preventDefault();
+  avisa('i-msg', '');
+  const corpo = corpoNovo('criar'); if (!corpo) return;
+  const senha = $('i-senha').value;
+  if (senha && senha.length < 10) return avisa('i-msg', 'A senha provisória precisa de pelo menos 10 caracteres (ou deixe em branco para gerar).');
+  if (senha) corpo.senha = senha;
+  $('i-criar').disabled = true;
+  try {
+    const r = await chamaAdmin(corpo);
+    guarda('s1.edicao', corpo.edicao);
+    avisa('i-msg', `Usuário ${corpo.email} criado.`, 'ok');
+    mostraSenha('Senha provisória de ' + corpo.email + ':', r.senha);
+    $('i-email').value = ''; $('i-nome').value = ''; $('i-senha').value = '';
+    carrega();
+  } catch (err) { avisa('i-msg', err.message); }
+  $('i-criar').disabled = false;
+};
+// secundário: convite por e-mail (só com SMTP próprio)
+$('i-convidar').onclick = async () => {
+  avisa('i-msg', '');
+  const corpo = corpoNovo('convidar'); if (!corpo) return;
+  if (hospedado) corpo.redirectTo = location.origin + location.pathname;
+  try {
+    await chamaAdmin(corpo);
+    guarda('s1.edicao', corpo.edicao);
+    avisa('i-msg', `Convite enviado para ${corpo.email}. Se não chegar, o SMTP próprio não está configurado — use "Criar usuário".`, 'ok');
+    $('i-email').value = ''; $('i-nome').value = '';
+    carrega();
+  } catch (err) { avisa('i-msg', err.message); }
+};
+
+$('g-salvar').onclick = async () => {
+  avisa('g-msg', '');
+  try {
+    await chamaAdmin({ acao: 'ajustar_config', chave: 'DIAS_OFFLINE', valor: $('g-dias').value });
+    await chamaAdmin({ acao: 'ajustar_config', chave: 'MAX_MAQUINAS', valor: $('g-max').value });
+    await chamaAdmin({ acao: 'ajustar_config', chave: 'MIN_VERSAO', valor: $('g-min').value });
+    avisa('g-msg', 'Regras salvas.', 'ok');
+    carrega();
+  } catch (e) { avisa('g-msg', e.message); }
+};
+$('f-busca').oninput = () => dados && desenha();
+$('f-atualizar').onclick = carrega;
+
+async function inicia() {
+  if (!window.supabase) { mostra('v-conexao'); return avisa('c-msg', 'Não carregou a biblioteca do Supabase (sem internet?).'); }
+  if (!conecta()) return;
+  let recuperacao = veioDeLink;
+  sb.auth.onAuthStateChange((evento) => { if (evento === 'PASSWORD_RECOVERY') { recuperacao = true; telaSenha(); } });
+  await sb.auth.getSession(); // processa o #access_token do link, se houver
+  if (recuperacao) return telaSenha();
+  entrouOuNao();
+}
+inicia();
+</script>
+</body>
+</html>
