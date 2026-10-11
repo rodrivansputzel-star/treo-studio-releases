@@ -118,7 +118,7 @@
         <div class="campo"><label for="i-email">E-mail</label><input id="i-email" type="email" required></div>
         <div class="campo"><label for="i-nome">Nome</label><input id="i-nome"></div>
         <div class="campo" style="flex:0 1 140px"><label for="i-edicao">Edição</label><select id="i-edicao" required><option value="treo">TREO Studio</option><option value="rj">RJ StudioRP</option><option value="roboflexx">Roboflexx StudioRP</option><option value="vinter">Vinter StudioRP</option><option value="projectmaq">Projectmaq StudioRP</option><option value="studiorp">StudioRP</option></select></div>
-        <div class="campo" style="flex:0 1 150px"><label for="i-degrau">Plano (K)</label><select id="i-degrau"><option value="oem">OEM (tudo)</option><option value="cliente">Cliente</option><option value="gratis">Visualizador (grátis)</option></select></div>
+        <div class="campo" style="flex:0 1 150px"><label for="i-degrau">Plano (K)</label><select id="i-degrau"><option value="oem">OEM</option><option value="cliente">Cliente</option><option value="gratis">Visualizador (grátis)</option></select></div>
         <div class="campo"><label for="i-senha">Senha provisória (opcional)</label><input id="i-senha" type="text" autocomplete="off" spellcheck="false" placeholder="em branco = gerar uma forte"></div>
         <button class="primario" type="submit" id="i-criar">Criar usuário (senha provisória)</button>
       </form>
@@ -393,6 +393,12 @@ function situacao(u) {
   return '<span class="estado ok">Ativo</span>';
 }
 
+// Lote 5: recursos que o painel oferece como extras e os INTERNOS da equipe (mesmos nomes de
+// servidor/supabase/functions/_compartilhado/recursos.ts — RECURSOS e RECURSOS_INTERNOS; teste confere)
+const RECURSOS_EXTRA = ['editar', 'apresentar', 'exportar-3d', 'proposta', 'estilos', 'devolver-escopo', 'oficina-blocos', 'publicar-catalogo'];
+const RECURSOS_INTERNOS = ['oficina-blocos', 'publicar-catalogo'];
+const ehEquipe = (u) => RECURSOS_INTERNOS.every((r) => (u.recursos_extra || []).includes(r));
+
 function desenha() {
   const busca = $('f-busca').value.trim().toLowerCase();
   const lista = dados.usuarios
@@ -404,10 +410,14 @@ function desenha() {
     const eds = u.edicoes.map((e) => `<span class="chip" title="${esc((e.recursos || []).join(', '))}">${esc(e.edicao)}<button title="Retirar edição" data-a="retirar_edicao" data-u="${esc(u.id)}" data-e="${esc(e.edicao)}">×</button></span>`).join('')
       + `<button class="mini" data-a="liberar_edicao" data-u="${esc(u.id)}">+ edição</button>`
       // K: plano (degrau) da licença — muda na próxima renovação da licença do app
-      + `<br><label class="pequeno suave">plano <select class="mini" data-a="set_degrau" data-u="${esc(u.id)}" title="${esc('recursos extras: ' + ((u.recursos_extra || []).join(', ') || 'nenhum'))}">${['oem', 'cliente', 'gratis'].map((d) => `<option value="${d}"${(u.degrau || 'oem') === d ? ' selected' : ''}>${{ oem: 'OEM (tudo)', cliente: 'Cliente', gratis: 'Visualizador (grátis)' }[d]}</option>`).join('')}</select></label>`
+      + `<br><label class="pequeno suave">plano <select class="mini" data-a="set_degrau" data-u="${esc(u.id)}" title="${esc('recursos extras: ' + ((u.recursos_extra || []).join(', ') || 'nenhum'))}">${['oem', 'cliente', 'gratis'].map((d) => `<option value="${d}"${(u.degrau || 'oem') === d ? ' selected' : ''}>${{ oem: 'OEM', cliente: 'Cliente', gratis: 'Visualizador (grátis)' }[d]}</option>`).join('')}</select></label>`
       // N: organização (personalização por cliente) — vale na próxima renovação da licença do app
       + `<br><label class="pequeno suave">organização <select class="mini" data-a="set_organizacao" data-u="${esc(u.id)}"><option value="">— nenhuma —</option>${(dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}"${u.organizacao === o.id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>`
-      + `<button class="mini" data-a="set_recursos" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="recursos liberados por cima do plano (editar, oficina-blocos, catalogo-oem, proposta, exportar-3d, devolver-escopo, publicar-catalogo, apresentar)">extras</button>`;
+      + `<button class="mini" data-a="set_recursos" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="recursos liberados por cima do plano (${esc(RECURSOS_EXTRA.join(', '))})">extras</button>`
+      // Lote 5 (A18/A19): atalho dos recursos INTERNOS da equipe (Oficina de Blocos + publicar catálogo) — grava por set_recursos
+      + (ehEquipe(u)
+        ? `<button class="mini" data-a="equipe" data-v="tirar" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="tem os recursos internos (${esc(RECURSOS_INTERNOS.join(', '))}); clique para tirar">✓ equipe</button>`
+        : `<button class="mini" data-a="equipe" data-v="dar" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="equipe do produto: dá os recursos internos (${esc(RECURSOS_INTERNOS.join(', '))}) por cima do plano">equipe</button>`);
     const venc = u.licenca_ate ? (Date.parse(u.licenca_ate) < agora ? ' <span class="estado bloq">(vencida)</span>' : '') : '';
     const linhaU = `<tr>
       <td><strong>${esc(u.nome || '—')}</strong>${u.admin ? ' <span class="chip">admin</span>' : ''}<br><span class="suave pequeno">${esc(u.email)}</span></td>
@@ -463,7 +473,14 @@ $('t-corpo').onclick = async (ev) => {
   if (a === 'retirar_edicao') { if (!confirm(`Retirar a edição "${b.dataset.e}"? O app para ao vencer a licença atual.`)) return; corpo.edicao = b.dataset.e; }
   if (a === 'liberar_edicao') { const e = prompt('Edição a liberar (treo, rj, roboflexx, vinter, projectmaq ou studiorp):', le('s1.edicao')); if (!e) return; corpo.edicao = e.trim(); }
   if (a === 'renomear_usuario') { const n = prompt('Nome:'); if (!n) return; corpo.nome = n.trim(); }
-  if (a === 'set_recursos') { const r = prompt('Recursos extras por cima do plano (separados por vírgula; vazio = nenhum):\neditar, oficina-blocos, catalogo-oem, proposta, exportar-3d, devolver-escopo, publicar-catalogo, apresentar', b.dataset.r || ''); if (r === null) return; corpo.recursos = r.split(',').map((x) => x.trim()).filter(Boolean); }
+  if (a === 'set_recursos') { const r = prompt('Recursos extras por cima do plano (separados por vírgula; vazio = nenhum):\n' + RECURSOS_EXTRA.join(', ') + '\n(internos da equipe: ' + RECURSOS_INTERNOS.join(', ') + ')', b.dataset.r || ''); if (r === null) return; corpo.recursos = r.split(',').map((x) => x.trim()).filter(Boolean); }
+  if (a === 'equipe') {   // Lote 5: mesmo contrato (set_recursos); preserva os outros extras do usuário
+    const atuais = (b.dataset.r || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const dar = b.dataset.v === 'dar';
+    if (!confirm(dar ? 'Dar a este usuário os recursos internos da equipe (Oficina de Blocos e publicar catálogo)? Vale na próxima renovação da licença do app.' : 'Tirar os recursos internos da equipe deste usuário? Vale na próxima renovação da licença do app.')) return;
+    corpo.acao = 'set_recursos';
+    corpo.recursos = dar ? [...new Set([...atuais, ...RECURSOS_INTERNOS])] : atuais.filter((r) => !RECURSOS_INTERNOS.includes(r));
+  }
   if (a === 'redefinir_senha' && !confirm(`Gerar uma nova senha provisória para ${b.dataset.email}?\nA senha atual deixa de valer. A licença já emitida continua até vencer; no próximo login o app pede para criar uma senha nova.`)) return;
   if (a === 'remover_maquina' && !confirm('Remover este computador da lista? Libera a vaga; a licença dele vale até vencer.')) return;
   if (a === 'excluir_usuario') {
