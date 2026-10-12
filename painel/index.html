@@ -69,6 +69,14 @@
   .org-lista li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--linha); }
   .org-lista .cor { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--linha); flex: none; }
   .org-lista .nome { flex: 1; }
+  /* A2 · pedidos de bloco (Solicitar bloco) */
+  .ped-lista { list-style: none; margin: 12px 0 0; padding: 0; }
+  .ped-lista > li { padding: 10px 0; border-bottom: 1px solid var(--linha); }
+  .ped-lista .cab { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
+  .ped-lista .desc { white-space: pre-wrap; margin: 6px 0; font-size: 13px; }
+  .ped-lista .resp { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+  .ped-lista .resp input { flex: 1 1 260px; width: auto; }
+  .ped-lista .resp select { width: auto; }
 </style>
 </head>
 <body>
@@ -158,6 +166,21 @@
       </form>
       <div id="o-msg" class="msg"></div>
       <ul class="org-lista" id="o-lista"></ul>
+    </div>
+
+    <!-- A2 · "Solicitar bloco": fila da equipe (pedidos de bloco genérico/estilo/fabricante) — docs/A-FASE-A-ORGANIZACAO.md -->
+    <div class="cartao" id="pd-cartao">
+      <div class="linha" style="justify-content:space-between">
+        <h2 style="margin:0">Pedidos de bloco (Solicitar bloco)</h2>
+        <div class="linha">
+          <select id="pd-status" style="width:auto" aria-label="filtrar por status"><option value="">todos os status</option></select>
+          <select id="pd-tipo" style="width:auto" aria-label="filtrar por tipo"><option value="">todos os tipos</option></select>
+          <button id="pd-atualizar">Atualizar</button>
+        </div>
+      </div>
+      <p class="pequeno suave">O usuário autorizou a equipe a ver o pedido e os anexos para atender. Status e resposta aparecem no app dele em “Meus pedidos”. Equipamento de fabricante só entra a partir do próprio fabricante.</p>
+      <ul class="ped-lista" id="pd-lista"><li class="suave pequeno">Carregando…</li></ul>
+      <div id="pd-msg" class="msg"></div>
     </div>
 
     <div class="cartao">
@@ -303,7 +326,62 @@ async function carrega() {
   $('g-dias').value = c.diasOffline; $('g-max').value = c.maxMaquinas; $('g-min').value = c.minVersao;
   desenhaOrgs();
   desenha();
+  carregaPedidos();
 }
+
+// ───── A2 · pedidos de bloco. Mesmos nomes de servidor/supabase/functions/_compartilhado/pedidos-bloco.ts (teste confere).
+const STATUS_PEDIDO = { recebido: 'Recebido', em_analise: 'Em análise', aceito: 'Aceito', em_producao: 'Em produção', publicado: 'Publicado no catálogo', recusado: 'Não atendido' };
+const TIPO_PEDIDO = { generico: 'Genérico reutilizável', estilo: 'Estilo construtivo', fabricante: 'Catálogo de fabricante' };
+let pedidos = [];
+for (const [k, v] of Object.entries(STATUS_PEDIDO)) $('pd-status').insertAdjacentHTML('beforeend', `<option value="${k}">${v}</option>`);
+for (const [k, v] of Object.entries(TIPO_PEDIDO)) $('pd-tipo').insertAdjacentHTML('beforeend', `<option value="${k}">${v}</option>`);
+async function carregaPedidos() {
+  avisa('pd-msg', '');
+  try {
+    const r = await chamaAdmin({ acao: 'listar_pedidos', status: $('pd-status').value || null, tipo: $('pd-tipo').value || null });
+    $('pd-cartao').hidden = r.pedidosDisponivel === false;
+    pedidos = r.pedidos || [];
+  } catch (e) { pedidos = []; avisa('pd-msg', e.message); }
+  desenhaPedidos();
+}
+function desenhaPedidos() {
+  const quem = (id) => { const u = dados && dados.usuarios.find((x) => x.id === id); return u ? (u.nome ? u.nome + ' · ' : '') + u.email : id; };
+  const org = (id) => { const o = dados && (dados.organizacoes || []).find((x) => x.id === id); return o ? o.nome : ''; };
+  $('pd-lista').innerHTML = pedidos.length ? pedidos.map((p) => `<li>
+    <div class="cab"><span><strong>${esc(p.nome)}</strong> <span class="chip">${esc(TIPO_PEDIDO[p.tipo] || p.tipo)}</span>${p.tipo === 'fabricante' ? ' <span class="estado pend" title="só entra a partir do próprio fabricante">fabricante</span>' : ''}</span>
+      <span class="pequeno suave">${dataHora(p.criado_em)} · ${esc(quem(p.autor))}${org(p.organizacao) ? ' · ' + esc(org(p.organizacao)) : ''}${p.edicao ? ' · ' + esc(p.edicao) : ''}${p.versao_app ? ' ' + esc(p.versao_app) : ''}</span></div>
+    <div class="desc">${esc(p.descricao)}</div>
+    ${p.medidas ? `<div class="pequeno"><span class="suave">medidas:</span> ${esc(p.medidas)}</div>` : ''}
+    ${p.referencia ? `<div class="pequeno"><span class="suave">referência:</span> ${esc(p.referencia)}</div>` : ''}
+    ${(p.anexos || []).length ? `<div class="pequeno"><span class="suave">anexos:</span> ${p.anexos.map((a) => `<button class="mini" data-pd="anexo" data-id="${esc(p.id)}" data-arq="${esc(a.nome)}">${esc(a.nome)}</button>`).join(' ')}</div>` : ''}
+    <div class="resp">
+      <select data-pd="status" data-id="${esc(p.id)}" aria-label="status">${Object.entries(STATUS_PEDIDO).map(([k, v]) => `<option value="${k}"${p.status === k ? ' selected' : ''}>${v}</option>`).join('')}</select>
+      <input data-pd="resposta" data-id="${esc(p.id)}" maxlength="2000" placeholder="resposta para o usuário (aparece em Meus pedidos)" value="${esc(p.resposta || '')}">
+      <button class="mini primario" data-pd="salvar" data-id="${esc(p.id)}">Salvar</button>
+      ${p.status_em ? `<span class="pequeno suave">atualizado ${dataHora(p.status_em)}</span>` : ''}
+    </div></li>`).join('') : '<li class="suave pequeno">Nenhum pedido.</li>';
+}
+$('pd-atualizar').onclick = carregaPedidos;
+$('pd-status').onchange = carregaPedidos;
+$('pd-tipo').onchange = carregaPedidos;
+$('pd-lista').onclick = async (ev) => {
+  const b = ev.target.closest('button[data-pd]');
+  if (!b) return;
+  b.disabled = true;
+  try {
+    if (b.dataset.pd === 'anexo') {   // URL assinada de 5 min (bucket privado); o acesso fica registrado no log da função
+      const r = await chamaAdmin({ acao: 'anexo_pedido', pedido: b.dataset.id, arquivo: b.dataset.arq });
+      if (r.url) window.open(r.url, '_blank', 'noopener');
+    } else if (b.dataset.pd === 'salvar') {
+      const li = b.closest('li');
+      const status = li.querySelector('select[data-pd="status"]').value, resposta = li.querySelector('input[data-pd="resposta"]').value.trim();
+      await chamaAdmin({ acao: 'status_pedido', pedido: b.dataset.id, status, resposta: resposta || null });
+      avisa('pd-msg', 'Pedido atualizado.', 'ok');
+      await carregaPedidos();
+    }
+  } catch (e) { avisa('pd-msg', e.message); }
+  b.disabled = false;
+};
 
 // ───── N · organizações (personalização por cliente). O servidor revalida tudo (tipo, tamanho, SVG sem script).
 const LOGO_MAX = 262144;   // = _compartilhado/personalizacao.ts › LOGO_MAX e o check da migração
@@ -427,6 +505,11 @@ function desenha() {
       + `<br><label class="pequeno suave">plano <select class="mini" data-a="set_degrau" data-u="${esc(u.id)}" title="${esc('recursos extras: ' + ((u.recursos_extra || []).join(', ') || 'nenhum'))}">${['oem', 'cliente', 'gratis'].map((d) => `<option value="${d}"${(u.degrau || 'oem') === d ? ' selected' : ''}>${{ oem: 'OEM', cliente: 'Cliente', gratis: 'Visualizador (grátis)' }[d]}</option>`).join('')}</select></label>`
       // N: organização (personalização por cliente) — vale na próxima renovação da licença do app
       + `<br><label class="pequeno suave">organização <select class="mini" data-a="set_organizacao" data-u="${esc(u.id)}"><option value="">— nenhuma —</option>${(dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}"${u.organizacao === o.id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>`
+      // A1: papel na organização (gestor define Estilos construtivos) e flag comercial — vale na próxima renovação da licença
+      + (u.organizacao && dados.membrosDisponivel !== false
+        ? ` <label class="pequeno suave" title="gestor: define estilos construtivos e gerencia os membros · usuário: desenha">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${['gestor', 'usuario'].map((p) => `<option value="${p}"${(u.papel || 'usuario') === p ? ' selected' : ''}>${p === 'gestor' ? 'gestor' : 'usuário'}</option>`).join('')}</select></label>`
+          + ` <label class="pequeno suave" style="display:inline" title="lê a lista de preços da organização (Fase C/D)"><input type="checkbox" style="width:auto" data-a="set_comercial" data-u="${esc(u.id)}" data-p="${esc(u.papel || 'usuario')}"${u.comercial ? ' checked' : ''}> comercial</label>`
+        : '')
       // C: teste grátis com prazo — data (último dia) e atalhos a partir de hoje; vale na próxima renovação da licença do app
       + `<br><label class="pequeno suave">teste até <input type="date" class="mini" style="width:auto;padding:1px 4px" data-a="set_teste" data-u="${esc(u.id)}" value="${esc(u.teste_ate ? String(u.teste_ate).slice(0, 10) : '')}"></label> `
       + PRAZOS_TESTE.map((n) => `<button class="mini" data-a="teste_prazo" data-n="${n}" data-u="${esc(u.id)}" title="teste até hoje + ${n} dias">+${n} dias</button>`).join('')
@@ -472,6 +555,14 @@ $('t-corpo').onchange = async (ev) => {
     tst.disabled = true;
     try { await chamaAdmin({ acao: 'set_teste', usuario: tst.dataset.u, teste_ate: tst.value || null }); await carrega(); }
     catch (err) { avisa('t-msg', err.message); tst.disabled = false; }
+    return;
+  }
+  const pap = ev.target.closest('[data-a="set_papel"], [data-a="set_comercial"]');   // A1: papel / flag comercial na organização
+  if (pap) {
+    pap.disabled = true;
+    const corpo = pap.dataset.a === 'set_papel' ? { acao: 'set_papel', usuario: pap.dataset.u, papel: pap.value } : { acao: 'set_papel', usuario: pap.dataset.u, papel: pap.dataset.p, comercial: pap.checked };
+    try { await chamaAdmin(corpo); await carrega(); }
+    catch (err) { avisa('t-msg', err.message); pap.disabled = false; }
     return;
   }
   const org = ev.target.closest('select[data-a="set_organizacao"]');   // N: vínculo usuário → organização
