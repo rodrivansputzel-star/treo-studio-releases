@@ -386,6 +386,20 @@ $('o-lista').onclick = async (ev) => {
   catch (err) { avisa('o-msg', err.message); b.disabled = false; }
 };
 
+// C · teste grátis com prazo (perfis.teste_ate = último dia, inclusive, fuso de Brasília) — mesmas regras de
+// servidor/supabase/functions/_compartilhado/teste.ts (PRAZOS_TESTE_DIAS, FUSO_TESTE_MIN; teste confere). Vencido: a função
+// licenca emite o degrau grátis (só olhar) e o app explica "Seu teste terminou".
+const PRAZOS_TESTE = [60, 90];
+const FUSO_TESTE_MIN = -180;
+const hojeTeste = () => new Date(Date.now() + FUSO_TESTE_MIN * 60000).toISOString().slice(0, 10);
+const somaDiasTeste = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+const dataTeste = (d) => d ? String(d).slice(8, 10) + '/' + String(d).slice(5, 7) + '/' + String(d).slice(0, 4) : '—';
+function situacaoTeste(u) {
+  if (!u.teste_ate) return '';
+  const ate = String(u.teste_ate).slice(0, 10);
+  return hojeTeste() > ate ? `<br><span class="estado bloq" title="a licença sai no plano grátis (só olhar)">Teste encerrado em ${esc(dataTeste(ate))}</span>`
+    : `<br><span class="estado pend">Teste até ${esc(dataTeste(ate))}</span>`;
+}
 function situacao(u) {
   if (u.bloqueado) return '<span class="estado bloq">Bloqueado</span>';
   if (u.trocar_senha) return '<span class="estado pend" title="Ainda não criou a própria senha">Senha provisória</span>';
@@ -413,7 +427,11 @@ function desenha() {
       + `<br><label class="pequeno suave">plano <select class="mini" data-a="set_degrau" data-u="${esc(u.id)}" title="${esc('recursos extras: ' + ((u.recursos_extra || []).join(', ') || 'nenhum'))}">${['oem', 'cliente', 'gratis'].map((d) => `<option value="${d}"${(u.degrau || 'oem') === d ? ' selected' : ''}>${{ oem: 'OEM', cliente: 'Cliente', gratis: 'Visualizador (grátis)' }[d]}</option>`).join('')}</select></label>`
       // N: organização (personalização por cliente) — vale na próxima renovação da licença do app
       + `<br><label class="pequeno suave">organização <select class="mini" data-a="set_organizacao" data-u="${esc(u.id)}"><option value="">— nenhuma —</option>${(dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}"${u.organizacao === o.id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>`
-      + `<button class="mini" data-a="set_recursos" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="recursos liberados por cima do plano (${esc(RECURSOS_EXTRA.join(', '))})">extras</button>`
+      // C: teste grátis com prazo — data (último dia) e atalhos a partir de hoje; vale na próxima renovação da licença do app
+      + `<br><label class="pequeno suave">teste até <input type="date" class="mini" style="width:auto;padding:1px 4px" data-a="set_teste" data-u="${esc(u.id)}" value="${esc(u.teste_ate ? String(u.teste_ate).slice(0, 10) : '')}"></label> `
+      + PRAZOS_TESTE.map((n) => `<button class="mini" data-a="teste_prazo" data-n="${n}" data-u="${esc(u.id)}" title="teste até hoje + ${n} dias">+${n} dias</button>`).join('')
+      + (u.teste_ate ? `<button class="mini" data-a="teste_prazo" data-n="0" data-u="${esc(u.id)}" title="tira o prazo: a licença volta a sair normalmente no plano do usuário">sem teste</button>` : '')
+      + `<br><button class="mini" data-a="set_recursos" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="recursos liberados por cima do plano (${esc(RECURSOS_EXTRA.join(', '))})">extras</button>`
       // Lote 5 (A18/A19): atalho dos recursos INTERNOS da equipe (Oficina de Blocos + publicar catálogo) — grava por set_recursos
       + (ehEquipe(u)
         ? `<button class="mini" data-a="equipe" data-v="tirar" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="tem os recursos internos (${esc(RECURSOS_INTERNOS.join(', '))}); clique para tirar">✓ equipe</button>`
@@ -421,7 +439,7 @@ function desenha() {
     const venc = u.licenca_ate ? (Date.parse(u.licenca_ate) < agora ? ' <span class="estado bloq">(vencida)</span>' : '') : '';
     const linhaU = `<tr>
       <td><strong>${esc(u.nome || '—')}</strong>${u.admin ? ' <span class="chip">admin</span>' : ''}<br><span class="suave pequeno">${esc(u.email)}</span></td>
-      <td>${situacao(u)}</td>
+      <td>${situacao(u)}${situacaoTeste(u)}</td>
       <td>${eds}</td>
       <td class="pequeno">${dataHora(u.ultimo_login)}</td>
       <td class="pequeno">${data(u.licenca_ate)}${venc}</td>
@@ -449,6 +467,13 @@ function desenha() {
 
 // K: o <select> do plano grava na hora (set_degrau)
 $('t-corpo').onchange = async (ev) => {
+  const tst = ev.target.closest('input[data-a="set_teste"]');   // C: teste grátis — data do último dia (vazio = sem teste)
+  if (tst) {
+    tst.disabled = true;
+    try { await chamaAdmin({ acao: 'set_teste', usuario: tst.dataset.u, teste_ate: tst.value || null }); await carrega(); }
+    catch (err) { avisa('t-msg', err.message); tst.disabled = false; }
+    return;
+  }
   const org = ev.target.closest('select[data-a="set_organizacao"]');   // N: vínculo usuário → organização
   if (org) {
     org.disabled = true;
@@ -480,6 +505,12 @@ $('t-corpo').onclick = async (ev) => {
     if (!confirm(dar ? 'Dar a este usuário os recursos internos da equipe (Oficina de Blocos e publicar catálogo)? Vale na próxima renovação da licença do app.' : 'Tirar os recursos internos da equipe deste usuário? Vale na próxima renovação da licença do app.')) return;
     corpo.acao = 'set_recursos';
     corpo.recursos = dar ? [...new Set([...atuais, ...RECURSOS_INTERNOS])] : atuais.filter((r) => !RECURSOS_INTERNOS.includes(r));
+  }
+  if (a === 'teste_prazo') {   // C: "+60 dias" / "+90 dias" a partir de hoje; "sem teste" = null
+    const n = Number(b.dataset.n) || 0;
+    corpo.acao = 'set_teste';
+    corpo.teste_ate = n ? somaDiasTeste(hojeTeste(), n) : null;
+    if (!n && !confirm('Tirar o prazo de teste deste usuário? A licença volta a sair normalmente no plano dele, na próxima renovação.')) return;
   }
   if (a === 'redefinir_senha' && !confirm(`Gerar uma nova senha provisória para ${b.dataset.email}?\nA senha atual deixa de valer. A licença já emitida continua até vencer; no próximo login o app pede para criar uma senha nova.`)) return;
   if (a === 'remover_maquina' && !confirm('Remover este computador da lista? Libera a vaga; a licença dele vale até vencer.')) return;
