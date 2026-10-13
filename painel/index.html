@@ -507,8 +507,8 @@ function desenha() {
       + `<br><label class="pequeno suave">organização <select class="mini" data-a="set_organizacao" data-u="${esc(u.id)}"><option value="">— nenhuma —</option>${(dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}"${u.organizacao === o.id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>`
       // A1: papel na organização (gestor define Estilos construtivos) e flag comercial — vale na próxima renovação da licença
       + (u.organizacao && dados.membrosDisponivel !== false
-        ? ` <label class="pequeno suave" title="gestor: define estilos construtivos e gerencia os membros · usuário: desenha">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${['gestor', 'usuario'].map((p) => `<option value="${p}"${(u.papel || 'usuario') === p ? ' selected' : ''}>${p === 'gestor' ? 'gestor' : 'usuário'}</option>`).join('')}</select></label>`
-          + ` <label class="pequeno suave" style="display:inline" title="lê a lista de preços da organização (Fase C/D)"><input type="checkbox" style="width:auto" data-a="set_comercial" data-u="${esc(u.id)}" data-p="${esc(u.papel || 'usuario')}"${u.comercial ? ' checked' : ''}> comercial</label>`
+        ? ` <label class="pequeno suave" title="gestor: define estilos construtivos e gerencia os membros · usuário: desenha · leitor (E2): gerência/diretoria — só vê o painel da obra, as revisões e as decisões, não edita nada">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${['gestor', 'usuario', 'leitor'].map((p) => `<option value="${p}"${(u.papel || 'usuario') === p ? ' selected' : ''}>${p === 'gestor' ? 'gestor' : p === 'leitor' ? 'leitor' : 'usuário'}</option>`).join('')}</select></label>`
+          + ` <label class="pequeno suave" style="display:inline" title="${u.papel === 'leitor' ? 'leitor não tem a flag comercial' : 'lê a lista de preços da organização (Fase C/D)'}"><input type="checkbox" style="width:auto" data-a="set_comercial" data-u="${esc(u.id)}" data-p="${esc(u.papel || 'usuario')}"${u.comercial ? ' checked' : ''}${u.papel === 'leitor' ? ' disabled' : ''}> comercial</label>`
         : '')
       // C: teste grátis com prazo — data (último dia) e atalhos a partir de hoje; vale na próxima renovação da licença do app
       + `<br><label class="pequeno suave">teste até <input type="date" class="mini" style="width:auto;padding:1px 4px" data-a="set_teste" data-u="${esc(u.id)}" value="${esc(u.teste_ate ? String(u.teste_ate).slice(0, 10) : '')}"></label> `
@@ -536,7 +536,7 @@ function desenha() {
     const linhasM = u.maquinas.map((m) => `<tr class="maquina">
       <td>↳ ${esc(m.nome || 'sem nome')}<br><span class="suave pequeno" title="${esc(m.hash)}">${esc(m.hash.slice(0, 12))}…</span></td>
       <td>${m.bloqueada ? '<span class="estado bloq">Bloqueado</span>' : '<span class="estado ok">Liberado</span>'}</td>
-      <td class="pequeno">app ${esc(m.versao_app || '?')}</td>
+      <td class="pequeno" title="versão do app vista por último (no último pedido de licença deste computador)">app ${esc(m.versao_app || '?')}${/-beta\b/.test(m.versao_app || '') ? ' <span class="chip">beta</span>' : ''}</td>
       <td class="pequeno">visto ${dataHora(m.ultima_vez)}</td>
       <td class="pequeno">${data(m.ultima_licenca && m.ultima_licenca.expira)}</td>
       <td class="pequeno suave">desde ${data(m.criada_em)}</td>
