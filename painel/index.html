@@ -69,6 +69,12 @@
   .org-lista li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--linha); }
   .org-lista .cor { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--linha); flex: none; }
   .org-lista .nome { flex: 1; }
+  /* U1 · perfil da organização (nível, co-marca, tema, catálogos, canal) */
+  .chip.nivel-grupo { background: var(--acento); color: var(--acento-texto); }
+  .chip.nivel-parceiro { border: 1px solid var(--acento); background: transparent; }
+  .chip.nivel-padrao { background: var(--chip); }
+  .chip.nivel { cursor: pointer; }
+  .p-regra { font-size: 12.5px; color: var(--suave); margin: 4px 0 10px; }
   /* A2 · pedidos de bloco (Solicitar bloco) */
   .ped-lista { list-style: none; margin: 12px 0 0; padding: 0; }
   .ped-lista > li { padding: 10px 0; border-bottom: 1px solid var(--linha); }
@@ -125,7 +131,7 @@
       <form id="i-form" class="linha">
         <div class="campo"><label for="i-email">E-mail</label><input id="i-email" type="email" required></div>
         <div class="campo"><label for="i-nome">Nome</label><input id="i-nome"></div>
-        <div class="campo" style="flex:0 1 140px"><label for="i-edicao">Edição</label><select id="i-edicao" required><option value="treo">TREO Studio</option><option value="rj">RJ StudioRP</option><option value="roboflexx">Roboflexx StudioRP</option><option value="vinter">Vinter StudioRP</option><option value="projectmaq">Projectmaq StudioRP</option><option value="studiorp">StudioRP</option></select></div>
+        <div class="campo" style="flex:0 1 140px"><label for="i-edicao">Edição</label><select id="i-edicao" required><option value="studiorp">StudioRP (0.3.0 · padrão)</option><option value="treo">TREO Studio</option><option value="rj">RJ StudioRP</option><option value="roboflexx">Roboflexx StudioRP</option><option value="vinter">Vinter StudioRP</option><option value="projectmaq">Projectmaq StudioRP</option></select></div>
         <div class="campo" style="flex:0 1 150px"><label for="i-degrau">Plano (K)</label><select id="i-degrau"><option value="oem">OEM</option><option value="cliente">Cliente</option><option value="gratis">Visualizador (grátis)</option></select></div>
         <div class="campo"><label for="i-senha">Senha provisória (opcional)</label><input id="i-senha" type="text" autocomplete="off" spellcheck="false" placeholder="em branco = gerar uma forte"></div>
         <button class="primario" type="submit" id="i-criar">Criar usuário (senha provisória)</button>
@@ -168,6 +174,44 @@
       <ul class="org-lista" id="o-lista"></ul>
     </div>
 
+    <!-- U1 · perfil da organização (0.3.0): nível, co-marca, tema curado, catálogos visíveis, canal — docs/U1-CONTRATO-PERFIL.md -->
+    <div class="cartao" id="p-cartao" hidden>
+      <h2>Perfil da organização (nível, tema, catálogos, canal)</h2>
+      <p class="pequeno suave">Define como o app “se veste” para quem está vinculado à organização: Padrão (cara StudioRP), Parceiro (organização em destaque, StudioRP discreto) ou Grupo (tema próprio travado e co-marca “… by StudioRP”). Só a equipe ajusta, uma vez; vale na próxima renovação da licença do app (e offline depois disso).</p>
+      <form id="p-form">
+        <div class="linha">
+          <div class="campo"><label for="p-org">Organização</label><select id="p-org"></select></div>
+          <div class="campo" style="flex:0 1 160px"><label for="p-nivel">Nível</label><select id="p-nivel"></select></div>
+          <div class="campo" style="flex:0 1 140px"><label for="p-canal">Canal de atualização</label><select id="p-canal"></select></div>
+        </div>
+        <p class="p-regra" id="p-regra"></p>
+        <div class="linha">
+          <div class="campo"><label for="p-tema">Tema (só no nível Grupo; fica travado)</label><select id="p-tema"></select></div>
+          <div class="campo"><label for="p-comarca">Co-marca (vazio = a padrão do nível)</label><input id="p-comarca" maxlength="80" placeholder="Empresa Studio · by StudioRP"></div>
+          <div class="campo" style="flex:0 1 150px"><label for="p-comarca-pos">Onde</label><select id="p-comarca-pos"><option value="barra">na barra</option><option value="sobre">no “Sobre”</option></select></div>
+        </div>
+        <div class="linha" style="margin-top:10px">
+          <div class="campo"><label for="p-publicos">Catálogos públicos visíveis</label>
+            <label class="pequeno" style="margin:0 0 4px"><input type="checkbox" id="p-todos" style="width:auto"> todos os públicos</label>
+            <input id="p-publicos" placeholder="ids separados por vírgula (ex.: cat-fabricante-1, cat-fabricante-2)"></div>
+          <div class="campo" style="flex:0 1 220px"><label>&nbsp;</label><label class="pequeno" style="margin:0"><input type="checkbox" id="p-proprio" style="width:auto"> catálogo próprio da organização (“Meus blocos”, qualquer nível)</label></div>
+        </div>
+        <div class="linha" style="margin-top:10px"><button class="primario" type="submit" id="p-salvar">Salvar perfil</button></div>
+      </form>
+      <div id="p-msg" class="msg"></div>
+    </div>
+
+    <!-- U3 · catálogos de fabricante (0.3.0): marca PÚBLICO e organização dona — docs/retomada/U3-CATALOGO-PUBLICO.md -->
+    <div class="cartao" id="cf-cartao" hidden>
+      <div class="linha" style="justify-content:space-between">
+        <h2 style="margin:0">Catálogos de fabricante (público · da organização)</h2>
+        <button id="cf-atualizar">Atualizar</button>
+      </div>
+      <p class="pequeno suave">Cada catálogo publicado pela Oficina de Blocos › ☁ fabricante… aparece aqui, <b>privado e sem dona</b> até a equipe decidir. <b>Público</b>: toda conta ativa recebe (a organização escolhe quais no perfil, “Catálogos públicos visíveis”). <b>Privado com dona</b>: só os membros daquela organização (com “catálogo próprio” ligado no perfil). Vale na próxima sincronização do app; o instalador leva os públicos do dia do build.</p>
+      <ul class="org-lista" id="cf-lista"><li class="suave pequeno">Carregando…</li></ul>
+      <div id="cf-msg" class="msg"></div>
+    </div>
+
     <!-- A2 · "Solicitar bloco": fila da equipe (pedidos de bloco genérico/estilo/fabricante) — docs/A-FASE-A-ORGANIZACAO.md -->
     <div class="cartao" id="pd-cartao">
       <div class="linha" style="justify-content:space-between">
@@ -189,6 +233,7 @@
         <div class="campo" style="flex:0 1 180px"><label for="g-dias">Dias offline (validade)</label><input id="g-dias" type="number" min="1" max="90"></div>
         <div class="campo" style="flex:0 1 180px"><label for="g-max">Máx. computadores/usuário</label><input id="g-max" type="number" min="1" max="50"></div>
         <div class="campo" style="flex:0 1 180px"><label for="g-min">Versão mínima do app</label><input id="g-min" placeholder="0.0.0"></div>
+        <div class="campo"><label for="g-link">Link para instalar o StudioRP (vai no aviso de versão antiga; vazio = sem link)</label><input id="g-link" type="url" maxlength="500" placeholder="https://…"></div>
         <button id="g-salvar">Salvar regras</button>
       </div>
       <p class="pequeno suave">Bloqueios e mudanças valem na próxima renovação: o app para quando a licença atual vencer (até “dias offline”).</p>
@@ -314,7 +359,7 @@ async function entrouOuNao() {
     return avisa('l-msg', e.codigo === 'nao_admin' ? 'Esta conta não é administradora. Para usar o Studio, entre pelo aplicativo.' : e.message);
   }
   mostra('v-painel');
-  $('i-edicao').value = le('s1.edicao') || 'treo';
+  $('i-edicao').value = 'studiorp';   // U1: edição única da 0.3.0 por padrão (as antigas continuam na lista)
   carrega();
 }
 
@@ -324,9 +369,12 @@ async function carrega() {
   try { dados = await chamaAdmin({ acao: 'listar' }); } catch (e) { return avisa('t-msg', e.message); }
   const c = dados.configEfetiva;
   $('g-dias').value = c.diasOffline; $('g-max').value = c.maxMaquinas; $('g-min').value = c.minVersao;
+  $('g-link').value = linkInstalarAtual();   // U1
   desenhaOrgs();
+  desenhaPerfis();   // U1: perfil da organização (depois da lista de organizações: põe o selo do nível nela)
   desenha();
   carregaPedidos();
+  carregaCatalogos();   // U3
 }
 
 // ───── A2 · pedidos de bloco. Mesmos nomes de servidor/supabase/functions/_compartilhado/pedidos-bloco.ts (teste confere).
@@ -393,7 +441,7 @@ function desenhaOrgs() {
   $('o-lista').innerHTML = orgs.length ? orgs.map((o) => `<li>
       <span class="cor" style="background:${o.cor && /^#[0-9a-fA-F]{6}$/.test(o.cor) ? o.cor : 'transparent'}" title="${esc(o.cor || 'sem cor')}"></span>
       ${o.logo ? `<img src="${esc(o.logo)}" alt="">` : ''}
-      <span class="nome"><strong>${esc(o.nome)}</strong> <span class="suave pequeno">· ${conta(o.id)} usuário(s)</span></span>
+      <span class="nome"><strong>${esc(o.nome)}</strong> <span class="suave pequeno">· ${conta(o.id)} usuário(s)</span>${o.origem === 'convite' ? ' <span class="pequeno" title="criada pelo próprio fornecedor ao aceitar um convite (U7): revisar o plano e os dados">· criada por convite — revisar</span>' : ''}</span>
       <button class="mini" data-o="editar" data-id="${esc(o.id)}">Editar</button>
       <button class="mini perigo" data-o="excluir" data-id="${esc(o.id)}">Excluir</button></li>`).join('')
     : '<li class="suave pequeno">Nenhuma organização cadastrada.</li>';
@@ -464,6 +512,109 @@ $('o-lista').onclick = async (ev) => {
   catch (err) { avisa('o-msg', err.message); b.disabled = false; }
 };
 
+// ───── U3 · catálogos de fabricante: lista (ação catalogos_fabricante), marca público e dona (set_catalogo_fabricante). Banco sem a
+// migração u3_catalogo_publico → `catalogosDisponivel: false` e o cartão fica escondido. O servidor revalida tudo.
+let catalogosFab = [];
+async function carregaCatalogos() {
+  avisa('cf-msg', '');
+  let r;
+  try { r = await chamaAdmin({ acao: 'catalogos_fabricante' }); } catch (e) { $('cf-cartao').hidden = false; return avisa('cf-msg', e.message); }
+  $('cf-cartao').hidden = r.catalogosDisponivel !== true;
+  catalogosFab = r.catalogos || [];
+  const orgs = (dados && dados.organizacoes) || [];
+  const opcoesOrg = (atual) => '<option value="">— sem dona (equipe) —</option>' + orgs.map((o) => `<option value="${esc(o.id)}"${o.id === atual ? ' selected' : ''}>${esc(o.nome)}</option>`).join('');
+  $('cf-lista').innerHTML = catalogosFab.length ? catalogosFab.map((c) => `<li>
+      <span class="chip${c.publico ? ' nivel-grupo' : ''}">${c.publico ? 'público' : 'privado'}</span>
+      <span class="nome"><b>${esc(c.nome)}</b> <span class="suave pequeno">${esc(c.fabricante)} · v${esc(c.versao)} · ${esc(c.blocos)} bloco(s) · ${esc(String(c.publicado_em || '').slice(0, 10))} · sha256 ${esc(String(c.sha256 || '').slice(0, 12))}…</span></span>
+      <select data-cf="dona" data-f="${esc(c.fabricante)}" style="width:auto" aria-label="organização dona">${opcoesOrg(c.organizacao)}</select>
+      <button class="mini" data-cf="publico" data-f="${esc(c.fabricante)}" data-v="${c.publico ? '0' : '1'}">${c.publico ? 'Tornar privado' : 'Marcar público'}</button>
+    </li>`).join('') : '<li class="suave pequeno">Nenhum catálogo publicado ainda (Oficina de Blocos › ☁ fabricante…).</li>';
+}
+$('cf-atualizar').onclick = () => carregaCatalogos();
+$('cf-lista').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-cf="publico"]');
+  if (!b) return;
+  b.disabled = true;
+  try { await chamaAdmin({ acao: 'set_catalogo_fabricante', fabricante: b.dataset.f, publico: b.dataset.v === '1' }); avisa('cf-msg', 'Salvo — vale na próxima sincronização do app.', 'ok'); await carregaCatalogos(); }
+  catch (err) { avisa('cf-msg', err.message); b.disabled = false; }
+});
+$('cf-lista').addEventListener('change', async (e) => {
+  const s = e.target.closest('select[data-cf="dona"]');
+  if (!s) return;
+  try { await chamaAdmin({ acao: 'set_catalogo_fabricante', fabricante: s.dataset.f, organizacao: s.value || null }); avisa('cf-msg', 'Dona salva — vale na próxima sincronização do app.', 'ok'); await carregaCatalogos(); }
+  catch (err) { avisa('cf-msg', err.message); }
+});
+
+// ───── U1 · perfil da organização. Níveis, canais e temas curados vêm do servidor (`listar`: niveis, canais, temasCurados — gerados de
+// _compartilhado/perfil-organizacao.ts e temas-curados.ts, sem cópia aqui); o servidor revalida tudo (ação set_perfil_organizacao).
+const REGRA_NIVEL = {
+  padrao: 'Padrão: nome e logo StudioRP, tema StudioRP (o usuário escolhe claro/escuro), carimbos StudioRP.',
+  parceiro: 'Parceiro: logo e nome da organização em destaque, StudioRP como co-marca discreta, tema StudioRP, carimbos organização + StudioRP.',
+  grupo: 'Grupo: tema de Grupo travado, logo em destaque, co-marca “<nome> · by StudioRP”, carimbos organização + “by StudioRP”.',
+};
+const nomeNivel = (id) => ((dados.niveis || []).find((n) => n.id === id) || { nome: id }).nome;
+function opcoes(sel, lista, atual) { sel.innerHTML = lista.map((o) => `<option value="${esc(o.id)}"${o.id === atual ? ' selected' : ''}>${esc(o.nome)}</option>`).join(''); }
+function desenhaPerfis() {
+  const orgs = dados.organizacoes || [];
+  $('p-cartao').hidden = dados.perfisDisponivel !== true || !orgs.length;
+  if ($('p-cartao').hidden) return;
+  // selo do nível na lista de organizações (ao lado do botão Editar; clicar abre o perfil)
+  for (const b of $('o-lista').querySelectorAll('button[data-o="editar"]')) {
+    const o = orgs.find((x) => x.id === b.dataset.id);
+    if (!o || !o.perfil) continue;
+    b.insertAdjacentHTML('beforebegin', `<span class="chip nivel nivel-${esc(o.perfil.nivel)}" data-p="${esc(o.id)}" title="perfil da organização">${esc(nomeNivel(o.perfil.nivel))}${o.perfil.canal === 'beta' ? ' · beta' : ''}</span>`);
+  }
+  const atual = orgs.some((o) => o.id === $('p-org').value) ? $('p-org').value : orgs[0].id;
+  opcoes($('p-org'), orgs.map((o) => ({ id: o.id, nome: o.nome })), atual);
+  opcoes($('p-nivel'), dados.niveis || [], 'padrao');
+  opcoes($('p-canal'), dados.canais || [], 'estavel');
+  opcoes($('p-tema'), [{ id: '', nome: 'StudioRP (padrão)' }, ...(dados.temasCurados || []).map((t) => ({ id: t.id, nome: `${t.nome} (${t.bases.join('/')})` }))], '');
+  preenchePerfil();
+}
+function preenchePerfil() {
+  const o = (dados.organizacoes || []).find((x) => x.id === $('p-org').value);
+  if (!o || !o.perfil) return;
+  const p = o.perfil;
+  $('p-nivel').value = p.nivel; $('p-canal').value = p.canal; $('p-tema').value = p.tema || '';
+  $('p-comarca').value = p.coMarca ? p.coMarca.texto : ''; $('p-comarca-pos').value = p.coMarca ? p.coMarca.posicao : 'barra';
+  const todos = p.catalogos.publicos.includes('*');
+  $('p-todos').checked = todos; $('p-publicos').value = todos ? '' : p.catalogos.publicos.join(', ');
+  $('p-proprio').checked = p.catalogos.proprio;
+  ajustaPerfil();
+}
+function ajustaPerfil() {
+  const n = $('p-nivel').value;
+  $('p-regra').textContent = REGRA_NIVEL[n] || '';
+  $('p-tema').disabled = n !== 'grupo';
+  $('p-comarca').disabled = $('p-comarca-pos').disabled = n === 'padrao';
+  $('p-publicos').disabled = $('p-todos').checked;
+  $('p-comarca').placeholder = n === 'grupo' ? `${($('p-org').selectedOptions[0] || { textContent: 'Empresa' }).textContent} · by StudioRP` : 'StudioRP';
+}
+$('p-org').onchange = () => { avisa('p-msg', ''); preenchePerfil(); };
+$('p-nivel').onchange = ajustaPerfil; $('p-todos').onchange = ajustaPerfil;
+$('o-lista').addEventListener('click', (ev) => {
+  const c = ev.target.closest('[data-p]');
+  if (!c) return;
+  $('p-org').value = c.dataset.p; avisa('p-msg', ''); preenchePerfil();
+  $('p-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('p-form').onsubmit = async (e) => {
+  e.preventDefault();
+  avisa('p-msg', '');
+  const n = $('p-nivel').value, texto = $('p-comarca').value.trim();
+  // campos desligados pelo nível são gravados como estão (o servidor deriva por nível); só o tema fora do Grupo vai vazio
+  const corpo = {
+    acao: 'set_perfil_organizacao', organizacao: $('p-org').value, nivel: n, canal: $('p-canal').value,
+    tema: n === 'grupo' ? ($('p-tema').value || null) : null,
+    coMarca: texto ? { texto, posicao: $('p-comarca-pos').value } : null,
+    catalogos: { publicos: $('p-todos').checked ? ['*'] : $('p-publicos').value.split(',').map((x) => x.trim()).filter(Boolean), proprio: $('p-proprio').checked },
+  };
+  $('p-salvar').disabled = true;
+  try { await chamaAdmin(corpo); avisa('p-msg', `Perfil salvo (${nomeNivel(n)}). Vale na próxima renovação da licença do app.`, 'ok'); await carrega(); }
+  catch (err) { avisa('p-msg', err.message); }
+  $('p-salvar').disabled = false;
+};
+
 // C · teste grátis com prazo (perfis.teste_ate = último dia, inclusive, fuso de Brasília) — mesmas regras de
 // servidor/supabase/functions/_compartilhado/teste.ts (PRAZOS_TESTE_DIAS, FUSO_TESTE_MIN; teste confere). Vencido: a função
 // licenca emite o degrau grátis (só olhar) e o app explica "Seu teste terminou".
@@ -487,7 +638,7 @@ function situacao(u) {
 
 // Lote 5: recursos que o painel oferece como extras e os INTERNOS da equipe (mesmos nomes de
 // servidor/supabase/functions/_compartilhado/recursos.ts — RECURSOS e RECURSOS_INTERNOS; teste confere)
-const RECURSOS_EXTRA = ['editar', 'apresentar', 'exportar-3d', 'proposta', 'estilos', 'devolver-escopo', 'oficina-blocos', 'publicar-catalogo'];
+const RECURSOS_EXTRA = ['editar', 'apresentar', 'exportar-3d', 'proposta', 'estilos', 'devolver-escopo', 'oficina-blocos', 'publicar-catalogo', 'simulacao'];
 const RECURSOS_INTERNOS = ['oficina-blocos', 'publicar-catalogo'];
 const ehEquipe = (u) => RECURSOS_INTERNOS.every((r) => (u.recursos_extra || []).includes(r));
 
@@ -587,7 +738,7 @@ $('t-corpo').onclick = async (ev) => {
   if (a === 'bloquear_usuario') corpo.bloqueado = b.dataset.v === 'true';
   if (a === 'bloquear_maquina') corpo.bloqueada = b.dataset.v === 'true';
   if (a === 'retirar_edicao') { if (!confirm(`Retirar a edição "${b.dataset.e}"? O app para ao vencer a licença atual.`)) return; corpo.edicao = b.dataset.e; }
-  if (a === 'liberar_edicao') { const e = prompt('Edição a liberar (treo, rj, roboflexx, vinter, projectmaq ou studiorp):', le('s1.edicao')); if (!e) return; corpo.edicao = e.trim(); }
+  if (a === 'liberar_edicao') { const e = prompt('Edição a liberar (studiorp; antigas: treo, rj, roboflexx, vinter, projectmaq):', 'studiorp'); if (!e) return; corpo.edicao = e.trim(); }
   if (a === 'renomear_usuario') { const n = prompt('Nome:'); if (!n) return; corpo.nome = n.trim(); }
   if (a === 'set_recursos') { const r = prompt('Recursos extras por cima do plano (separados por vírgula; vazio = nenhum):\n' + RECURSOS_EXTRA.join(', ') + '\n(internos da equipe: ' + RECURSOS_INTERNOS.join(', ') + ')', b.dataset.r || ''); if (r === null) return; corpo.recursos = r.split(',').map((x) => x.trim()).filter(Boolean); }
   if (a === 'equipe') {   // Lote 5: mesmo contrato (set_recursos); preserva os outros extras do usuário
@@ -636,7 +787,7 @@ $('p-fechar').onclick = () => { $('p-senha').value = ''; $('p-caixa').hidden = t
 function corpoNovo(acao) {
   const corpo = { acao, email: $('i-email').value.trim(), nome: $('i-nome').value.trim(), edicao: $('i-edicao').value.trim(), degrau: $('i-degrau').value };
   if (!corpo.email || !$('i-email').checkValidity()) { avisa('i-msg', 'Digite um e-mail válido.'); return null; }
-  if (!corpo.edicao || !$('i-edicao').checkValidity()) { avisa('i-msg', 'Digite a edição (ex.: treo).'); return null; }
+  if (!corpo.edicao || !$('i-edicao').checkValidity()) { avisa('i-msg', 'Digite a edição (ex.: studiorp).'); return null; }
   return corpo;
 }
 // padrão: cria a conta com senha provisória (sem e-mail)
@@ -672,12 +823,16 @@ $('i-convidar').onclick = async () => {
   } catch (err) { avisa('i-msg', err.message); }
 };
 
+/** U1: link de instalação gravado (linha LINK_INSTALAR da config; '' = sem) */
+const linkInstalarAtual = () => ((dados && dados.config || []).find((l) => l.chave === 'LINK_INSTALAR') || { valor: '' }).valor;
 $('g-salvar').onclick = async () => {
   avisa('g-msg', '');
   try {
     await chamaAdmin({ acao: 'ajustar_config', chave: 'DIAS_OFFLINE', valor: $('g-dias').value });
     await chamaAdmin({ acao: 'ajustar_config', chave: 'MAX_MAQUINAS', valor: $('g-max').value });
     await chamaAdmin({ acao: 'ajustar_config', chave: 'MIN_VERSAO', valor: $('g-min').value });
+    // U1: só grava o link quando mudou (banco sem a migração u1_link_instalar recusa a chave nova)
+    if ($('g-link').value.trim() !== linkInstalarAtual()) await chamaAdmin({ acao: 'ajustar_config', chave: 'LINK_INSTALAR', valor: $('g-link').value.trim() });
     avisa('g-msg', 'Regras salvas.', 'ok');
     carrega();
   } catch (e) { avisa('g-msg', e.message); }
