@@ -198,6 +198,12 @@
         </div>
         <div class="linha" style="margin-top:10px"><button class="primario" type="submit" id="p-salvar">Salvar perfil</button></div>
       </form>
+      <!-- F6a (D38) · assentos de Gestor do plano: papel ≠ plano; o gestor da organização não promove além disso ("fale com a equipe") -->
+      <div class="linha" id="p-assentos-linha" style="margin-top:12px" hidden>
+        <div class="campo" style="flex:0 1 200px"><label for="p-assentos">Assentos de Gestor (plano)</label><input id="p-assentos" type="number" min="1" max="50" step="1"></div>
+        <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><button type="button" id="p-assentos-salvar">Salvar assentos</button></div>
+        <p class="pequeno suave" id="p-assentos-uso" style="margin:0;align-self:flex-end"></p>
+      </div>
       <div id="p-msg" class="msg"></div>
     </div>
 
@@ -210,6 +216,34 @@
       <p class="pequeno suave">Cada catálogo publicado pela Oficina de Blocos › ☁ fabricante… aparece aqui, <b>privado e sem dona</b> até a equipe decidir. <b>Público</b>: toda conta ativa recebe (a organização escolhe quais no perfil, “Catálogos públicos visíveis”). <b>Privado com dona</b>: só os membros daquela organização (com “catálogo próprio” ligado no perfil). Vale na próxima sincronização do app; o instalador leva os públicos do dia do build.</p>
       <ul class="org-lista" id="cf-lista"><li class="suave pequeno">Carregando…</li></ul>
       <div id="cf-msg" class="msg"></div>
+    </div>
+
+    <!-- F2 · vitrine do catálogo (0.3.0, D32): destaques de fornecedor e ordem "Recomendado" da Biblioteca — docs/retomada/F2-BIBLIOTECA-SECOES.md -->
+    <div class="cartao" id="vt-cartao" hidden>
+      <div class="linha" style="justify-content:space-between">
+        <h2 style="margin:0">Destaques · vitrine do catálogo</h2>
+        <button id="vt-atualizar">Atualizar</button>
+      </div>
+      <p class="pequeno suave">A seção <b>Em destaque</b> da Biblioteca mostra os fornecedores vigentes hoje (início e fim inclusive), na ordem escolhida. <b>Em destaque</b> = escolha editorial; <b>Patrocinado</b> só com relação comercial. Só catálogos <b>públicos</b> (cartão acima). Sem destaque vigente, a seção some. Vale na próxima sincronização do app; o instalador leva os vigentes e agendados do dia do build. Encerrar não apaga (fica no histórico).</p>
+      <form id="vt-form" class="linha">
+        <input type="hidden" id="vt-id">
+        <div class="campo" style="flex:0 1 200px"><label for="vt-fab">Fornecedor</label><select id="vt-fab" required></select></div>
+        <div class="campo" style="flex:0 1 150px"><label for="vt-rotulo">Rótulo</label><select id="vt-rotulo"><option value="destaque">Em destaque</option><option value="patrocinado">Patrocinado</option></select></div>
+        <div class="campo" style="flex:0 1 150px"><label for="vt-inicio">Início</label><input id="vt-inicio" type="date" required></div>
+        <div class="campo" style="flex:0 1 150px"><label for="vt-fim">Fim</label><input id="vt-fim" type="date" required></div>
+        <div class="campo" style="flex:0 1 90px"><label for="vt-ordem">Ordem</label><input id="vt-ordem" type="number" min="-1000" max="1000" step="1" value="0"></div>
+        <button class="primario" type="submit" id="vt-salvar">Criar destaque</button>
+        <button type="button" id="vt-novo" hidden>Novo</button>
+      </form>
+      <ul class="org-lista" id="vt-lista"><li class="suave pequeno">Carregando…</li></ul>
+      <h3 style="margin:16px 0 4px">Ordem “Recomendado”</h3>
+      <p class="pequeno suave">Um id por linha, na ordem desejada. <b>Blocos</b>: ids de bloco (valem dentro de cada seção da Biblioteca; o que não estiver aqui vem depois, em ordem alfabética; a lista é lida por todas as contas — não ponha ids de blocos de catálogo privado). <b>Fornecedores</b>: ids de catálogo público (ordem dos cartões em Fornecedores). Lista vazia = ordem alfabética.</p>
+      <div class="linha">
+        <div class="campo"><label for="vt-ord-blocos">Blocos</label><textarea id="vt-ord-blocos" rows="6" spellcheck="false" placeholder="ESTMOD&#10;ESTMODC&#10;MESA"></textarea></div>
+        <div class="campo"><label for="vt-ord-fab">Fornecedores</label><textarea id="vt-ord-fab" rows="6" spellcheck="false" placeholder="id-do-catalogo"></textarea></div>
+      </div>
+      <div class="linha" style="margin-top:6px"><button id="vt-ord-salvar">Salvar ordem</button></div>
+      <div id="vt-msg" class="msg"></div>
     </div>
 
     <!-- A2 · "Solicitar bloco": fila da equipe (pedidos de bloco genérico/estilo/fabricante) — docs/A-FASE-A-ORGANIZACAO.md -->
@@ -375,6 +409,7 @@ async function carrega() {
   desenha();
   carregaPedidos();
   carregaCatalogos();   // U3
+  carregaVitrine();   // F2
 }
 
 // ───── A2 · pedidos de bloco. Mesmos nomes de servidor/supabase/functions/_compartilhado/pedidos-bloco.ts (teste confere).
@@ -545,6 +580,73 @@ $('cf-lista').addEventListener('change', async (e) => {
   catch (err) { avisa('cf-msg', err.message); }
 });
 
+// ───── F2 · vitrine do catálogo: destaques (cria_destaque, edita_destaque, encerra_destaque) e ordem Recomendado (set_catalogo_ordem),
+// lidos por vitrine_catalogo. Banco sem a migração f2_catalogo_vitrine → `vitrineDisponivel: false` e o cartão fica escondido. Nomes e
+// regras em servidor/supabase/functions/_compartilhado/vitrine-catalogo.ts; o servidor revalida tudo (só catálogo público entra).
+const ROTULO_VT = { destaque: 'Em destaque', patrocinado: 'Patrocinado' };
+let vitrine = { destaques: [], catalogos: [], ordem: [] };
+const hojeVt = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const situacaoVt = (d) => (d.encerrado_em || d.fim < hojeVt() ? 'encerrado' : d.inicio > hojeVt() ? 'agendado' : 'vigente');
+function limpaVt() { $('vt-id').value = ''; $('vt-ordem').value = '0'; $('vt-rotulo').value = 'destaque'; $('vt-inicio').value = hojeVt(); $('vt-fim').value = ''; $('vt-salvar').textContent = 'Criar destaque'; $('vt-novo').hidden = true; $('vt-fab').disabled = false; }
+async function carregaVitrine() {
+  avisa('vt-msg', '');
+  let r;
+  try { r = await chamaAdmin({ acao: 'vitrine_catalogo' }); } catch (e) { $('vt-cartao').hidden = false; return avisa('vt-msg', e.message); }
+  $('vt-cartao').hidden = r.vitrineDisponivel !== true;
+  vitrine = r;
+  const pub = (r.catalogos || []).filter((c) => c.publico);
+  const nomeFab = (id) => ((r.catalogos || []).find((c) => c.fabricante === id) || { nome: id }).nome;
+  $('vt-fab').innerHTML = pub.length ? pub.map((c) => `<option value="${esc(c.fabricante)}">${esc(c.nome)} (${esc(c.fabricante)})</option>`).join('') : '<option value="">— nenhum catálogo público —</option>';
+  const ordemSit = { vigente: 0, agendado: 1, encerrado: 2 };
+  const ds = [...(r.destaques || [])].sort((a, b) => ordemSit[situacaoVt(a)] - ordemSit[situacaoVt(b)] || a.ordem - b.ordem || String(b.inicio).localeCompare(String(a.inicio)));
+  $('vt-lista').innerHTML = ds.length ? ds.map((d) => { const st = situacaoVt(d); return `<li>
+      <span class="chip${st === 'vigente' ? ' nivel-grupo' : ''}">${st}</span>
+      <span class="nome"><b>${esc(nomeFab(d.fabricante))}</b> <span class="suave pequeno">${esc(ROTULO_VT[d.rotulo] || d.rotulo)} · ${esc(d.inicio)} → ${esc(d.fim)} · ordem ${esc(d.ordem)}${d.encerrado_em ? ' · encerrado em ' + esc(String(d.encerrado_em).slice(0, 10)) : ''}</span></span>
+      ${d.encerrado_em ? '' : `<button class="mini" data-vt="edita" data-id="${esc(d.id)}">Editar</button><button class="mini" data-vt="encerra" data-id="${esc(d.id)}">Encerrar</button>`}
+    </li>`; }).join('') : '<li class="suave pequeno">Nenhum destaque cadastrado.</li>';
+  const ord = (l) => (((r.ordem || []).find((o) => o.lista === l) || {}).itens || []).join('\n');
+  $('vt-ord-blocos').value = ord('blocos'); $('vt-ord-fab').value = ord('fornecedores');
+  if (!$('vt-id').value) limpaVt();
+}
+$('vt-atualizar').onclick = () => carregaVitrine();
+$('vt-novo').onclick = () => limpaVt();
+$('vt-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const id = $('vt-id').value;
+  const campos = { rotulo: $('vt-rotulo').value, inicio: $('vt-inicio').value, fim: $('vt-fim').value, ordem: Number($('vt-ordem').value || 0) };
+  try {
+    if (id) await chamaAdmin({ acao: 'edita_destaque', id, ...campos });
+    else await chamaAdmin({ acao: 'cria_destaque', fabricante: $('vt-fab').value, ...campos });
+    avisa('vt-msg', id ? 'Destaque salvo.' : 'Destaque criado — vale na próxima sincronização do app.', 'ok');
+    limpaVt(); await carregaVitrine();
+  } catch (err) { avisa('vt-msg', err.message); }
+};
+$('vt-lista').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-vt]');
+  if (!b) return;
+  const d = (vitrine.destaques || []).find((x) => x.id === b.dataset.id);
+  if (!d) return;
+  if (b.dataset.vt === 'edita') {
+    $('vt-id').value = d.id; $('vt-fab').value = d.fabricante; $('vt-fab').disabled = true; $('vt-rotulo').value = d.rotulo;
+    $('vt-inicio').value = d.inicio; $('vt-fim').value = d.fim; $('vt-ordem').value = String(d.ordem);
+    $('vt-salvar').textContent = 'Salvar destaque'; $('vt-novo').hidden = false;
+    return;
+  }
+  // encerrar: dois cliques (o botão pede confirmação no próprio texto — sem diálogo nativo)
+  if (b.dataset.armado !== '1') { b.dataset.armado = '1'; b.textContent = 'Confirmar encerrar'; return; }
+  b.disabled = true;
+  try { await chamaAdmin({ acao: 'encerra_destaque', id: d.id }); avisa('vt-msg', 'Destaque encerrado.', 'ok'); await carregaVitrine(); }
+  catch (err) { avisa('vt-msg', err.message); b.disabled = false; }
+});
+$('vt-ord-salvar').onclick = async () => {
+  const linhas = (t) => t.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
+  try {
+    await chamaAdmin({ acao: 'set_catalogo_ordem', lista: 'blocos', itens: linhas($('vt-ord-blocos').value) });
+    await chamaAdmin({ acao: 'set_catalogo_ordem', lista: 'fornecedores', itens: linhas($('vt-ord-fab').value) });
+    avisa('vt-msg', 'Ordem salva — vale na próxima sincronização do app.', 'ok'); await carregaVitrine();
+  } catch (err) { avisa('vt-msg', err.message); }
+};
+
 // ───── U1 · perfil da organização. Níveis, canais e temas curados vêm do servidor (`listar`: niveis, canais, temasCurados — gerados de
 // _compartilhado/perfil-organizacao.ts e temas-curados.ts, sem cópia aqui); o servidor revalida tudo (ação set_perfil_organizacao).
 const REGRA_NIVEL = {
@@ -571,6 +673,24 @@ function desenhaPerfis() {
   opcoes($('p-tema'), [{ id: '', nome: 'StudioRP (padrão)' }, ...(dados.temasCurados || []).map((t) => ({ id: t.id, nome: `${t.nome} (${t.bases.join('/')})` }))], '');
   preenchePerfil();
 }
+// F6a: assentos de Gestor da organização escolhida no cartão (gestores em uso contados na lista de usuários)
+function preencheAssentos() {
+  $('p-assentos-linha').hidden = dados.papeisDisponivel !== true;
+  if ($('p-assentos-linha').hidden) return;
+  const o = (dados.organizacoes || []).find((x) => x.id === $('p-org').value);
+  if (!o) return;
+  const usados = (dados.usuarios || []).filter((u) => u.organizacao === o.id && u.papel === 'gestor').length;
+  $('p-assentos').value = String(o.assentos_gestor || 2);
+  $('p-assentos-uso').textContent = `${usados} em uso. O Gestor da organização não promove além disso; para reduzir, rebaixe alguém antes.`;
+}
+$('p-assentos-salvar').onclick = async () => {
+  avisa('p-msg', '');
+  const n = Number($('p-assentos').value);
+  $('p-assentos-salvar').disabled = true;
+  try { await chamaAdmin({ acao: 'set_assentos_gestor', organizacao: $('p-org').value, assentos: n }); await carrega(); avisa('p-msg', 'Assentos salvos. Valem na hora para o Gestor da organização.', 'ok'); }
+  catch (err) { avisa('p-msg', err.message); }
+  finally { $('p-assentos-salvar').disabled = false; }
+};
 function preenchePerfil() {
   const o = (dados.organizacoes || []).find((x) => x.id === $('p-org').value);
   if (!o || !o.perfil) return;
@@ -581,6 +701,7 @@ function preenchePerfil() {
   $('p-todos').checked = todos; $('p-publicos').value = todos ? '' : p.catalogos.publicos.join(', ');
   $('p-proprio').checked = p.catalogos.proprio;
   ajustaPerfil();
+  preencheAssentos();
 }
 function ajustaPerfil() {
   const n = $('p-nivel').value;
@@ -656,8 +777,13 @@ function desenha() {
       + `<br><label class="pequeno suave">plano <select class="mini" data-a="set_degrau" data-u="${esc(u.id)}" title="${esc('recursos extras: ' + ((u.recursos_extra || []).join(', ') || 'nenhum'))}">${['oem', 'cliente', 'gratis'].map((d) => `<option value="${d}"${(u.degrau || 'oem') === d ? ' selected' : ''}>${{ oem: 'OEM', cliente: 'Cliente', gratis: 'Visualizador (grátis)' }[d]}</option>`).join('')}</select></label>`
       // N: organização (personalização por cliente) — vale na próxima renovação da licença do app
       + `<br><label class="pequeno suave">organização <select class="mini" data-a="set_organizacao" data-u="${esc(u.id)}"><option value="">— nenhuma —</option>${(dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}"${u.organizacao === o.id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>`
-      // A1: papel na organização (gestor define Estilos construtivos) e flag comercial — vale na próxima renovação da licença
-      + (u.organizacao && dados.membrosDisponivel !== false
+      // F6a (D38): papéis gestor · comercial · engenharia · leitura (lista do servidor); `comercial` é derivada do papel — sem a caixa
+      + (u.organizacao && dados.membrosDisponivel !== false && dados.papeisDisponivel === true
+        ? ` <label class="pequeno suave" title="Gestor: catálogo, decisões e a equipe (papel, permissões, projetos) · Comercial: engenharia + valores e propostas · Engenharia: projeto, revisões, proposta técnica, composição de custo · Leitura: visualizador 3D e medidas, nunca valores. As permissões finas (ver valores, ver custos, lista de preços, criar/encerrar projetos, projetos visíveis) o Gestor da organização ajusta no app.">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${(dados.papeis || []).map((p) => `<option value="${esc(p.id)}"${(u.papel || 'engenharia') === p.id ? ' selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></label>`
+          + (Object.keys(u.permissoes || {}).length || u.projetos_todos === false ? ` <span class="chip pequeno" title="${esc('ajustes do gestor: ' + Object.entries(u.permissoes || {}).map(([k, v]) => `${k}=${v ? 'sim' : 'não'}`).join(', ') + (u.projetos_todos === false ? ' · só alguns projetos' : ''))}">ajustado</span>` : '')
+        : '')
+      // A1: papel na organização (gestor define Estilos construtivos) e flag comercial — banco ainda sem a F6a
+      + (u.organizacao && dados.membrosDisponivel !== false && dados.papeisDisponivel !== true
         ? ` <label class="pequeno suave" title="gestor: define estilos construtivos e gerencia os membros · usuário: desenha · leitor (E2): gerência/diretoria — só vê o painel da obra, as revisões e as decisões, não edita nada">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${['gestor', 'usuario', 'leitor'].map((p) => `<option value="${p}"${(u.papel || 'usuario') === p ? ' selected' : ''}>${p === 'gestor' ? 'gestor' : p === 'leitor' ? 'leitor' : 'usuário'}</option>`).join('')}</select></label>`
           + ` <label class="pequeno suave" style="display:inline" title="${u.papel === 'leitor' ? 'leitor não tem a flag comercial' : 'lê a lista de preços da organização (Fase C/D)'}"><input type="checkbox" style="width:auto" data-a="set_comercial" data-u="${esc(u.id)}" data-p="${esc(u.papel || 'usuario')}"${u.comercial ? ' checked' : ''}${u.papel === 'leitor' ? ' disabled' : ''}> comercial</label>`
         : '')
@@ -708,7 +834,7 @@ $('t-corpo').onchange = async (ev) => {
     catch (err) { avisa('t-msg', err.message); tst.disabled = false; }
     return;
   }
-  const pap = ev.target.closest('[data-a="set_papel"], [data-a="set_comercial"]');   // A1: papel / flag comercial na organização
+  const pap = ev.target.closest('[data-a="set_papel"], [data-a="set_comercial"]');   // A1/F6a: papel (e a flag comercial antiga) na organização
   if (pap) {
     pap.disabled = true;
     const corpo = pap.dataset.a === 'set_papel' ? { acao: 'set_papel', usuario: pap.dataset.u, papel: pap.value } : { acao: 'set_papel', usuario: pap.dataset.u, papel: pap.dataset.p, comercial: pap.checked };
