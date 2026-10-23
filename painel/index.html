@@ -83,6 +83,17 @@
   .ped-lista .resp { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
   .ped-lista .resp input { flex: 1 1 260px; width: auto; }
   .ped-lista .resp select { width: auto; }
+  /* F8 · usuários agrupados por organização (plano e teste da organização), avançado, caixa de confirmação própria */
+  tr.grupo td { background: var(--chip); border-top: 2px solid var(--linha); }
+  .grupo-cab { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+  .grupo-cab select, .grupo-cab input[type="date"] { width: auto; padding: 1px 4px; }
+  .chip.equipe { background: var(--acento); color: var(--acento-texto); }
+  details.avancado { margin-top: 6px; }
+  details.avancado summary { cursor: pointer; color: var(--suave); font-size: 12px; }
+  details.avancado label { display: inline-flex; align-items: center; gap: 4px; margin: 2px 8px 2px 0; color: var(--texto); }
+  details.avancado input[type="checkbox"] { width: auto; }
+  dialog#cx { border: 1px solid var(--linha); border-radius: 8px; background: var(--cartao); color: var(--texto); max-width: 440px; padding: 16px; }
+  dialog#cx::backdrop { background: rgba(0, 0, 0, .35); }
 </style>
 </head>
 <body>
@@ -132,10 +143,12 @@
         <div class="campo"><label for="i-email">E-mail</label><input id="i-email" type="email" required></div>
         <div class="campo"><label for="i-nome">Nome</label><input id="i-nome"></div>
         <div class="campo" style="flex:0 1 140px"><label for="i-edicao">Edição</label><select id="i-edicao" required><option value="studiorp">StudioRP (0.3.0 · padrão)</option><option value="treo">TREO Studio</option><option value="rj">RJ StudioRP</option><option value="roboflexx">Roboflexx StudioRP</option><option value="vinter">Vinter StudioRP</option><option value="projectmaq">Projectmaq StudioRP</option></select></div>
-        <div class="campo" style="flex:0 1 150px"><label for="i-degrau">Plano (K)</label><select id="i-degrau"><option value="oem">OEM</option><option value="cliente">Cliente</option><option value="gratis">Visualizador (grátis)</option></select></div>
+        <div class="campo" style="flex:0 1 200px"><label for="i-org">Organização</label><select id="i-org" required><option value="">— escolha —</option><option value="-">Sem organização (só olhar)</option></select></div>
+        <div class="campo" style="flex:0 1 150px"><label for="i-papel">Papel</label><select id="i-papel"></select></div>
         <div class="campo"><label for="i-senha">Senha provisória (opcional)</label><input id="i-senha" type="text" autocomplete="off" spellcheck="false" placeholder="em branco = gerar uma forte"></div>
         <button class="primario" type="submit" id="i-criar">Criar usuário (senha provisória)</button>
       </form>
+      <p class="pequeno" id="i-plano"></p>
       <p class="pequeno suave">Sem e-mail: a conta já nasce confirmada. Entregue a senha provisória à pessoa; no 1º login o app obriga a criar a própria senha.</p>
       <details class="secundario">
         <summary>Convidar por e-mail (precisa de SMTP próprio)</summary>
@@ -165,6 +178,12 @@
           <div class="campo"><label for="o-nome">Nome da empresa</label><input id="o-nome" maxlength="120" required placeholder="Empresa Exemplo"></div>
           <div class="campo"><label for="o-logo">Logo (PNG ou SVG, até 256 KB)</label><input id="o-logo" type="file" accept=".png,.svg,image/png,image/svg+xml"></div>
           <div class="campo" style="flex:0 1 150px"><label for="o-cor">Cor de destaque</label><div class="linha" style="gap:6px;flex-wrap:nowrap"><input id="o-cor" type="color" value="#0e8f7e"><label class="pequeno" style="margin:0"><input type="checkbox" id="o-sem-cor" style="width:auto"> sem cor</label></div></div>
+        </div>
+        <!-- F8 (D40): plano e teste grátis são da ORGANIZAÇÃO — valem para todos os membros -->
+        <div class="linha" id="o-plano-linha" style="margin-top:10px" hidden>
+          <div class="campo" style="flex:0 1 150px"><label for="o-plano">Plano</label><select id="o-plano"><option value="oem">OEM</option><option value="cliente">Cliente</option></select></div>
+          <div class="campo" style="flex:0 1 190px"><label for="o-teste">Teste grátis até (vazio = sem teste)</label><input id="o-teste" type="date"></div>
+          <p class="pequeno suave" style="margin:0;flex:1 1 260px;align-self:flex-end">Todos os membros recebem o plano da organização (o papel de cada um filtra). Teste vencido: todos só olham, com o aviso “Seu teste terminou”.</p>
         </div>
         <div class="campo" style="margin-top:10px"><label for="o-sobre">Texto do “Sobre” (até 2000 caracteres)</label><textarea id="o-sobre" rows="3" maxlength="2000"></textarea></div>
         <div class="campo"><label>Prévia</label><div class="org-previa" id="o-previa"><img id="o-previa-logo" alt="" hidden><span class="org-nome" id="o-previa-nome">—</span><button type="button" class="mini" id="o-tirar-logo" hidden>tirar logo</button></div></div>
@@ -203,6 +222,14 @@
         <div class="campo" style="flex:0 1 200px"><label for="p-assentos">Assentos de Gestor (plano)</label><input id="p-assentos" type="number" min="1" max="50" step="1"></div>
         <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><button type="button" id="p-assentos-salvar">Salvar assentos</button></div>
         <p class="pequeno suave" id="p-assentos-uso" style="margin:0;align-self:flex-end"></p>
+      </div>
+      <!-- F8 (D40 a–b) · assentos do plano: pagos (gestor, comercial, engenharia) e de Leitura (não pagos); a equipe amplia -->
+      <div class="linha" id="p-f8-assentos" style="margin-top:12px" hidden>
+        <div class="campo" style="flex:0 1 170px"><label for="p-pagos">Assentos pagos</label><input id="p-pagos" type="number" min="1" max="500" step="1"></div>
+        <div class="campo" style="flex:0 1 170px"><label for="p-leitura">Assentos de Leitura</label><input id="p-leitura" type="number" min="0" max="500" step="1"></div>
+        <div class="campo" style="flex:0 1 220px"><label>&nbsp;</label><label class="pequeno" style="margin:0"><input type="checkbox" id="p-leitura-conta" style="width:auto"> Leitura ocupa assento pago</label></div>
+        <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><button type="button" id="p-f8-salvar">Salvar assentos do plano</button></div>
+        <p class="pequeno suave" id="p-f8-uso" style="margin:0;align-self:flex-end"></p>
       </div>
       <div id="p-msg" class="msg"></div>
     </div>
@@ -276,9 +303,15 @@
 
     <div class="cartao">
       <div class="linha" style="justify-content:space-between;margin-bottom:10px">
-        <h2 style="margin:0">Usuários e computadores</h2>
-        <div class="linha"><input id="f-busca" placeholder="Buscar nome ou e-mail" style="width:220px"><button id="f-atualizar">Atualizar</button></div>
+        <h2 style="margin:0">Usuários por organização</h2>
+        <div class="linha">
+          <input id="f-busca" placeholder="Buscar nome, e-mail ou organização" style="width:240px">
+          <select id="f-org" style="width:auto" aria-label="filtrar por organização"><option value="">todas as organizações</option><option value="-">sem organização</option></select>
+          <select id="f-ordem" style="width:auto" aria-label="ordem"><option value="recente">mais recentes primeiro</option><option value="az">A–Z</option></select>
+          <button id="f-atualizar">Atualizar</button>
+        </div>
       </div>
+      <p class="pequeno suave" style="margin-top:0">Cada organização mostra o plano, o teste grátis e os assentos de Gestor; mudar vale para todos os membros na próxima renovação da licença. Sem organização = só olhar.</p>
       <div class="tabela-rolagem">
         <table>
           <thead><tr><th>Usuário</th><th>Situação</th><th>Edições</th><th>Último login</th><th>Licença até</th><th>Termo</th><th></th></tr></thead>
@@ -289,6 +322,9 @@
     </div>
   </section>
 </main>
+
+<!-- F8: caixa de confirmação própria (no lugar de confirm) -->
+<dialog id="cx"><p id="cx-texto" style="margin-top:0"></p><div class="linha" style="justify-content:flex-end"><button type="button" id="cx-nao">Cancelar</button><button type="button" id="cx-ok" class="primario">Confirmar</button></div></dialog>
 
 <script>
 'use strict';
@@ -405,6 +441,7 @@ async function carrega() {
   $('g-dias').value = c.diasOffline; $('g-max').value = c.maxMaquinas; $('g-min').value = c.minVersao;
   $('g-link').value = linkInstalarAtual();   // U1
   desenhaOrgs();
+  preencheNovo(); preencheFiltros();   // F8
   desenhaPerfis();   // U1: perfil da organização (depois da lista de organizações: põe o selo do nível nela)
   desenha();
   carregaPedidos();
@@ -476,7 +513,7 @@ function desenhaOrgs() {
   $('o-lista').innerHTML = orgs.length ? orgs.map((o) => `<li>
       <span class="cor" style="background:${o.cor && /^#[0-9a-fA-F]{6}$/.test(o.cor) ? o.cor : 'transparent'}" title="${esc(o.cor || 'sem cor')}"></span>
       ${o.logo ? `<img src="${esc(o.logo)}" alt="">` : ''}
-      <span class="nome"><strong>${esc(o.nome)}</strong> <span class="suave pequeno">· ${conta(o.id)} usuário(s)</span>${o.origem === 'convite' ? ' <span class="pequeno" title="criada pelo próprio fornecedor ao aceitar um convite (U7): revisar o plano e os dados">· criada por convite — revisar</span>' : ''}</span>
+      <span class="nome"><strong>${esc(o.nome)}</strong> <span class="suave pequeno">· ${conta(o.id)} usuário(s)${o.plano ? ' · plano ' + esc(nomePlano(o.plano)) + (o.teste_ate ? (hojeTeste() > o.teste_ate ? ' · teste encerrado' : ' · teste até ' + esc(dataTeste(o.teste_ate))) : '') : ''}</span>${o.origem === 'convite' ? ' <span class="pequeno" title="criada pelo próprio fornecedor ao aceitar um convite (U7): revisar o plano e os dados">· criada por convite — revisar</span>' : ''}</span>
       <button class="mini" data-o="editar" data-id="${esc(o.id)}">Editar</button>
       <button class="mini perigo" data-o="excluir" data-id="${esc(o.id)}">Excluir</button></li>`).join('')
     : '<li class="suave pequeno">Nenhuma organização cadastrada.</li>';
@@ -492,6 +529,7 @@ function limpaOrg() {
   $('o-id').value = ''; $('o-nome').value = ''; $('o-sobre').value = ''; $('o-logo').value = '';
   $('o-cor').value = '#0e8f7e'; $('o-sem-cor').checked = true; logoAtual = null;
   $('o-salvar').textContent = 'Criar organização'; $('o-novo').hidden = true;
+  $('o-plano').value = 'oem'; $('o-teste').value = '';   // F8
   previaOrg();
 }
 function leArquivo(f) {
@@ -525,7 +563,16 @@ $('o-form').onsubmit = async (e) => {
   if (id) corpo.organizacao = id;
   if (!corpo.nome) return avisa('o-msg', 'Digite o nome da empresa.');
   $('o-salvar').disabled = true;
-  try { await chamaAdmin(corpo); avisa('o-msg', id ? 'Organização atualizada.' : 'Organização criada.', 'ok'); limpaOrg(); await carrega(); }
+  // F8: plano e teste da organização (na criação vão juntos; na edição, só o que mudou)
+  const comPlano = dados && dados.planoDisponivel === true, plano = $('o-plano').value, teste = $('o-teste').value || null;
+  if (comPlano && !id) { corpo.plano = plano; corpo.teste_ate = teste; }
+  const antes = id ? (dados.organizacoes || []).find((x) => x.id === id) : null;
+  try {
+    await chamaAdmin(corpo);
+    if (comPlano && antes && antes.plano !== plano) await chamaAdmin({ acao: 'set_plano_organizacao', organizacao: id, plano });
+    if (comPlano && antes && (antes.teste_ate || null) !== teste) await chamaAdmin({ acao: 'set_teste_organizacao', organizacao: id, teste_ate: teste });
+    avisa('o-msg', id ? 'Organização atualizada.' : 'Organização criada.', 'ok'); limpaOrg(); await carrega();
+  }
   catch (err) { avisa('o-msg', err.message); }
   $('o-salvar').disabled = false;
 };
@@ -537,6 +584,7 @@ $('o-lista').onclick = async (ev) => {
   if (b.dataset.o === 'editar') {
     $('o-id').value = o.id; $('o-nome').value = o.nome; $('o-sobre').value = o.sobre || ''; $('o-logo').value = '';
     logoAtual = o.logo || null; $('o-sem-cor').checked = !o.cor; if (o.cor) $('o-cor').value = o.cor;
+    $('o-plano').value = o.plano || 'oem'; $('o-teste').value = o.teste_ate ? String(o.teste_ate).slice(0, 10) : '';   // F8
     $('o-salvar').textContent = 'Salvar alterações'; $('o-novo').hidden = false;
     previaOrg(); $('o-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
@@ -681,6 +729,7 @@ function preencheAssentos() {
   if (!o) return;
   const usados = (dados.usuarios || []).filter((u) => u.organizacao === o.id && u.papel === 'gestor').length;
   $('p-assentos').value = String(o.assentos_gestor || 2);
+  preencheAssentosPlano(o);   // F8
   $('p-assentos-uso').textContent = `${usados} em uso. O Gestor da organização não promove além disso; para reduzir, rebaixe alguém antes.`;
 }
 $('p-assentos-salvar').onclick = async () => {
@@ -745,8 +794,9 @@ const hojeTeste = () => new Date(Date.now() + FUSO_TESTE_MIN * 60000).toISOStrin
 const somaDiasTeste = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
 const dataTeste = (d) => d ? String(d).slice(8, 10) + '/' + String(d).slice(5, 7) + '/' + String(d).slice(0, 4) : '—';
 function situacaoTeste(u) {
-  if (!u.teste_ate) return '';
-  const ate = String(u.teste_ate).slice(0, 10);
+  const t = u.plano ? u.plano.teste_ate : u.teste_ate;   // F8: o teste é o da organização (sem organização, o legado do perfil)
+  if (!t) return '';
+  const ate = String(t).slice(0, 10);
   return hojeTeste() > ate ? `<br><span class="estado bloq" title="a licença sai no plano grátis (só olhar)">Teste encerrado em ${esc(dataTeste(ate))}</span>`
     : `<br><span class="estado pend">Teste até ${esc(dataTeste(ate))}</span>`;
 }
@@ -763,23 +813,128 @@ const RECURSOS_EXTRA = ['editar', 'apresentar', 'exportar-3d', 'proposta', 'esti
 const RECURSOS_INTERNOS = ['oficina-blocos', 'publicar-catalogo'];
 const ehEquipe = (u) => RECURSOS_INTERNOS.every((r) => (u.recursos_extra || []).includes(r));
 
+// ───── F8 · plano e teste grátis da ORGANIZAÇÃO (D40) e usuários agrupados por organização — docs/retomada/F8-PAINEL.md.
+// O plano (OEM · Cliente) e o teste vêm de `listar` (organizacoes[].plano/teste_ate, usuarios[].plano = o efetivo); sem organização = só
+// olhar (contas antigas mantêm o plano legado por usuário). Confirmações na caixa própria (caixa), nunca nos diálogos nativos.
+const NOME_EXTRA = { editar: 'editar o projeto', apresentar: 'Apresentar', 'exportar-3d': 'exportar DXF / 3D', proposta: 'lista e proposta', estilos: 'estilos construtivos', 'devolver-escopo': 'devolver escopo', simulacao: 'etapa 4 · Simular' };
+const EXTRAS_EDITAVEIS = RECURSOS_EXTRA.filter((r) => !RECURSOS_INTERNOS.includes(r));
+const ACOES_F8 = new Set(['teste_org_prazo', 'set_degrau', 'set_recursos', 'equipe']);
+const orgDe = (id) => ((dados && dados.organizacoes) || []).find((o) => o.id === id) || null;
+const nomePlano = (id) => (((dados && dados.planos) || []).find((x) => x.id === id) || { nome: { oem: 'OEM', cliente: 'Cliente', gratis: 'só olhar' }[id] || id }).nome;
+const nomePapel = (id) => (((dados && dados.papeis) || []).find((x) => x.id === id) || { nome: id || '' }).nome;
+function caixa(texto, ok = 'Confirmar') {
+  return new Promise((fim) => {
+    const d = $('cx');
+    $('cx-texto').textContent = texto; $('cx-ok').textContent = ok;
+    const sai = (v) => { $('cx-ok').onclick = $('cx-nao').onclick = d.oncancel = null; if (d.open) d.close(); fim(v); };
+    $('cx-ok').onclick = () => sai(true); $('cx-nao').onclick = () => sai(false); d.oncancel = (e) => { e.preventDefault(); sai(false); };
+    d.showModal();
+  });
+}
+// formulário "Novo usuário": organização obrigatória (ou "sem organização"), papel padrão Engenharia, o plano mostrado é o da organização
+function preencheNovo() {
+  $('o-plano-linha').hidden = dados.planoDisponivel !== true;   // plano e teste no formulário da organização
+  const sel = $('i-org'), atual = sel.value;
+  sel.innerHTML = '<option value="">— escolha —</option><option value="-">Sem organização (só olhar)</option>' + (dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('');
+  sel.value = [...sel.options].some((x) => x.value === atual) ? atual : '';
+  const papeis = dados.papeisDisponivel === true ? dados.papeis || [] : [];
+  const papelAtual = $('i-papel').value || 'engenharia';
+  $('i-papel').innerHTML = papeis.map((x) => `<option value="${esc(x.id)}"${x.id === papelAtual ? ' selected' : ''}>${esc(x.nome)}</option>`).join('');
+  ajustaNovo();
+}
+function ajustaNovo() {
+  const v = $('i-org').value, o = orgDe(v);
+  $('i-papel').disabled = !o || !$('i-papel').options.length;
+  $('i-plano').textContent = !v ? 'Escolha a organização (ou “Sem organização”): o plano e o teste grátis vêm dela.'
+    : !o ? 'Sem organização: a conta só olha (visualizador) até ser vinculada a uma organização.'
+    : `Plano de ${o.nome}: ${o.plano ? nomePlano(o.plano) : '—'}${o.teste_ate ? ' · teste até ' + dataTeste(o.teste_ate) : o.plano ? ' · sem teste' : ''}. Muda no cartão da organização, na lista abaixo.`;
+}
+$('i-org').onchange = ajustaNovo;
+// filtros da lista: organização e ordem (a ordem fica guardada só neste navegador)
+function preencheFiltros() {
+  const sel = $('f-org'), atual = sel.value;
+  sel.innerHTML = '<option value="">todas as organizações</option><option value="-">sem organização</option>' + (dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('');
+  sel.value = [...sel.options].some((x) => x.value === atual) ? atual : '';
+}
+$('f-ordem').value = le('f8.ordem') === 'az' ? 'az' : 'recente';
+$('f-ordem').onchange = () => { guarda('f8.ordem', $('f-ordem').value); dados && desenha(); };
+$('f-org').onchange = () => dados && desenha();
+function planoCurto(u) {
+  const pl = u.plano;
+  if (!pl) return '';
+  if (pl.origem === 'organizacao') return `plano ${esc(nomePlano(pl.degrau))} (da organização)`;
+  return pl.degrau === 'gratis' ? 'só olhar' : `plano ${esc(nomePlano(pl.degrau))} (legado, por usuário)`;
+}
+// cabeçalho do grupo = o cartão da organização: plano, teste, assentos, membros
+function cabecalhoOrg(o, membros) {
+  if (!o) return `<tr class="grupo"><td colspan="7"><div class="grupo-cab"><strong>Sem organização</strong><span class="suave pequeno">${membros.length} usuário(s) · só olhar até entrar numa organização (contas antigas mantêm o plano legado por usuário)</span></div></td></tr>`;
+  const gestores = membros.filter((u) => u.papel === 'gestor').length;
+  const venc = o.teste_ate && hojeTeste() > String(o.teste_ate).slice(0, 10);
+  const plano = dados.planoDisponivel === true
+    ? `<label class="pequeno suave">plano <select class="mini" data-a="set_plano_organizacao" data-o="${esc(o.id)}">${(dados.planos || []).map((x) => `<option value="${esc(x.id)}"${o.plano === x.id ? ' selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>`
+      + `<label class="pequeno suave">teste até <input type="date" class="mini" data-a="set_teste_organizacao" data-o="${esc(o.id)}" value="${esc(o.teste_ate ? String(o.teste_ate).slice(0, 10) : '')}"></label>`
+      + PRAZOS_TESTE.map((n) => `<button class="mini" data-a="teste_org_prazo" data-n="${n}" data-o="${esc(o.id)}" title="teste até hoje + ${n} dias, para todos os membros">+${n} dias</button>`).join('')
+      + (o.teste_ate ? `<button class="mini" data-a="teste_org_prazo" data-n="0" data-o="${esc(o.id)}" title="tira o prazo: todos os membros ficam com o plano sem prazo">sem teste</button>` : '')
+      + (venc ? '<span class="estado bloq">teste encerrado: todos só olham</span>' : o.teste_ate ? '<span class="estado pend">em teste</span>' : '')
+    : '<span class="pequeno suave">plano por usuário (banco sem a migração F8)</span>';
+  return `<tr class="grupo"><td colspan="7"><div class="grupo-cab"><strong>${esc(o.nome)}</strong>`
+    + (o.perfil && dados.perfisDisponivel === true ? `<span class="chip nivel nivel-${esc(o.perfil.nivel)}" data-p="${esc(o.id)}" title="perfil da organização">${esc(nomeNivel(o.perfil.nivel))}</span>` : '')
+    + `<span class="suave pequeno">${membros.length} membro(s)${textoAssentos(o)}${dados.papeisDisponivel === true ? ` · Gestor ${gestores} de ${esc(o.assentos_gestor || 2)}` : ''}</span>${plano}</div></td></tr>`;
+}
+// assentos do plano (D40 a–b): uso no cabeçalho do grupo; edição no cartão do perfil (ao lado dos assentos de Gestor)
+function textoAssentos(o) {
+  if (dados.assentosDisponivel !== true || o.assentos === undefined) return '';
+  const u = o.usados || { pagos: 0, leitura: 0 }, cheio = u.pagos >= o.assentos;
+  return ` · <span class="${cheio ? 'estado pend' : ''}" title="assentos pagos: gestor, comercial e engenharia${o.leitura_conta_assento ? ' e Leitura' : ''}">assentos ${u.pagos} de ${esc(o.assentos)}</span>`
+    + (o.leitura_conta_assento ? '' : ` · Leitura ${u.leitura} de ${esc(o.assentos_leitura)}`);
+}
+function preencheAssentosPlano(o) {
+  $('p-f8-assentos').hidden = dados.assentosDisponivel !== true || o.assentos === undefined;
+  if ($('p-f8-assentos').hidden) return;
+  $('p-pagos').value = String(o.assentos); $('p-leitura').value = String(o.assentos_leitura); $('p-leitura-conta').checked = !!o.leitura_conta_assento;
+  const u = o.usados || { pagos: 0, leitura: 0 };
+  $('p-f8-uso').textContent = `${u.pagos} pago(s) e ${u.leitura} de Leitura em uso. Passar dos assentos: o app pede para falar com a equipe do StudioRP.`;
+}
+$('p-f8-salvar').onclick = async () => {
+  avisa('p-msg', '');
+  $('p-f8-salvar').disabled = true;
+  try {
+    await chamaAdmin({ acao: 'set_assentos_organizacao', organizacao: $('p-org').value, assentos: Number($('p-pagos').value), assentos_leitura: Number($('p-leitura').value), leitura_conta_assento: $('p-leitura-conta').checked });
+    await carrega(); avisa('p-msg', 'Assentos do plano salvos. Valem na hora para convites e novos membros.', 'ok');
+  } catch (err) { avisa('p-msg', err.message); }
+  finally { $('p-f8-salvar').disabled = false; }
+};
 function desenha() {
-  const busca = $('f-busca').value.trim().toLowerCase();
-  const lista = dados.usuarios
-    .filter((u) => !busca || (u.email + ' ' + u.nome).toLowerCase().includes(busca))
-    .sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email, 'pt-BR'));
-  if (!lista.length) { $('t-corpo').innerHTML = '<tr><td colspan="7" class="suave">Nenhum usuário.</td></tr>'; return; }
-  const agora = Date.now();
-  $('t-corpo').innerHTML = lista.map((u) => {
-    const eds = u.edicoes.map((e) => `<span class="chip" title="${esc((e.recursos || []).join(', '))}">${esc(e.edicao)}<button title="Retirar edição" data-a="retirar_edicao" data-u="${esc(u.id)}" data-e="${esc(e.edicao)}">×</button></span>`).join('')
+  const busca = $('f-busca').value.trim().toLowerCase(), filtro = $('f-org').value, ordem = $('f-ordem').value;
+  const porNome = (a, b) => (a.nome || a.email).localeCompare(b.nome || b.email, 'pt-BR');
+  const cmp = ordem === 'az' ? porNome : (a, b) => String(b.criado_em || '').localeCompare(String(a.criado_em || '')) || porNome(a, b);
+  const casa = (u) => !busca || (u.email + ' ' + u.nome).toLowerCase().includes(busca);
+  const grupos = [];
+  for (const o of dados.organizacoes || []) {
+    if (filtro && filtro !== o.id) continue;
+    const todos = dados.usuarios.filter((u) => u.organizacao === o.id);
+    const lista = (busca && o.nome.toLowerCase().includes(busca) ? todos : todos.filter(casa)).sort(cmp);
+    if (busca && !lista.length) continue;
+    grupos.push({ o, todos, lista, chave: ordem === 'az' ? o.nome : String((lista[0] && lista[0].criado_em) || o.criada_em || '') });
+  }
+  grupos.sort((a, b) => (ordem === 'az' ? a.chave.localeCompare(b.chave, 'pt-BR') : b.chave.localeCompare(a.chave)));
+  if (!filtro || filtro === '-') {
+    const todos = dados.usuarios.filter((u) => !orgDe(u.organizacao)), lista = todos.filter(casa).sort(cmp);
+    if (lista.length || (!busca && filtro === '-')) grupos.push({ o: null, todos, lista });
+  }
+  if (!grupos.length) { $('t-corpo').innerHTML = '<tr><td colspan="7" class="suave">Nenhum usuário.</td></tr>'; return; }
+  $('t-corpo').innerHTML = grupos.map((g) => cabecalhoOrg(g.o, g.todos)
+    + (g.lista.length ? g.lista.map(linhaUsuario).join('') : '<tr><td colspan="7" class="suave pequeno">Nenhum membro ainda (crie o usuário acima já nesta organização).</td></tr>')).join('');
+}
+function linhaUsuario(u) {
+  const agora = Date.now(), extras = u.recursos_extra || [];
+  const eds = u.edicoes.map((e) => `<span class="chip" title="${esc((e.recursos || []).join(', '))}">${esc(e.edicao)}<button title="Retirar edição" data-a="retirar_edicao" data-u="${esc(u.id)}" data-e="${esc(e.edicao)}">×</button></span>`).join('')
       + `<button class="mini" data-a="liberar_edicao" data-u="${esc(u.id)}">+ edição</button>`
-      // K: plano (degrau) da licença — muda na próxima renovação da licença do app
-      + `<br><label class="pequeno suave">plano <select class="mini" data-a="set_degrau" data-u="${esc(u.id)}" title="${esc('recursos extras: ' + ((u.recursos_extra || []).join(', ') || 'nenhum'))}">${['oem', 'cliente', 'gratis'].map((d) => `<option value="${d}"${(u.degrau || 'oem') === d ? ' selected' : ''}>${{ oem: 'OEM', cliente: 'Cliente', gratis: 'Visualizador (grátis)' }[d]}</option>`).join('')}</select></label>`
-      // N: organização (personalização por cliente) — vale na próxima renovação da licença do app
+      // N: organização (mudar aqui leva o usuário para o plano da outra organização) — vale na próxima renovação da licença do app
       + `<br><label class="pequeno suave">organização <select class="mini" data-a="set_organizacao" data-u="${esc(u.id)}"><option value="">— nenhuma —</option>${(dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}"${u.organizacao === o.id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>`
       // F6a (D38): papéis gestor · comercial · engenharia · leitura (lista do servidor); `comercial` é derivada do papel — sem a caixa
       + (u.organizacao && dados.membrosDisponivel !== false && dados.papeisDisponivel === true
-        ? ` <label class="pequeno suave" title="Gestor: catálogo, decisões e a equipe (papel, permissões, projetos) · Comercial: engenharia + valores e propostas · Engenharia: projeto, revisões, proposta técnica, composição de custo · Leitura: visualizador 3D e medidas, nunca valores. As permissões finas (ver valores, ver custos, lista de preços, criar/encerrar projetos, projetos visíveis) o Gestor da organização ajusta no app.">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${(dados.papeis || []).map((p) => `<option value="${esc(p.id)}"${(u.papel || 'engenharia') === p.id ? ' selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></label>`
+        ? ` <label class="pequeno suave" title="Gestor: catálogo, decisões e a equipe (papel, permissões, projetos) · Comercial: engenharia + valores e propostas · Engenharia: projeto, revisões, proposta técnica, composição de custo · Leitura: só olhar (visualizador 3D e medidas, nunca valores). As permissões finas (ver valores, ver custos, lista de preços, criar/encerrar projetos, projetos visíveis) o Gestor da organização ajusta no app.">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${(dados.papeis || []).map((p) => `<option value="${esc(p.id)}"${(u.papel || 'engenharia') === p.id ? ' selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></label>`
           + (Object.keys(u.permissoes || {}).length || u.projetos_todos === false ? ` <span class="chip pequeno" title="${esc('ajustes do gestor: ' + Object.entries(u.permissoes || {}).map(([k, v]) => `${k}=${v ? 'sim' : 'não'}`).join(', ') + (u.projetos_todos === false ? ' · só alguns projetos' : ''))}">ajustado</span>` : '')
         : '')
       // A1: papel na organização (gestor define Estilos construtivos) e flag comercial — banco ainda sem a F6a
@@ -787,19 +942,26 @@ function desenha() {
         ? ` <label class="pequeno suave" title="gestor: define estilos construtivos e gerencia os membros · usuário: desenha · leitor (E2): gerência/diretoria — só vê o painel da obra, as revisões e as decisões, não edita nada">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${['gestor', 'usuario', 'leitor'].map((p) => `<option value="${p}"${(u.papel || 'usuario') === p ? ' selected' : ''}>${p === 'gestor' ? 'gestor' : p === 'leitor' ? 'leitor' : 'usuário'}</option>`).join('')}</select></label>`
           + ` <label class="pequeno suave" style="display:inline" title="${u.papel === 'leitor' ? 'leitor não tem a flag comercial' : 'lê a lista de preços da organização (Fase C/D)'}"><input type="checkbox" style="width:auto" data-a="set_comercial" data-u="${esc(u.id)}" data-p="${esc(u.papel || 'usuario')}"${u.comercial ? ' checked' : ''}${u.papel === 'leitor' ? ' disabled' : ''}> comercial</label>`
         : '')
-      // C: teste grátis com prazo — data (último dia) e atalhos a partir de hoje; vale na próxima renovação da licença do app
-      + `<br><label class="pequeno suave">teste até <input type="date" class="mini" style="width:auto;padding:1px 4px" data-a="set_teste" data-u="${esc(u.id)}" value="${esc(u.teste_ate ? String(u.teste_ate).slice(0, 10) : '')}"></label> `
-      + PRAZOS_TESTE.map((n) => `<button class="mini" data-a="teste_prazo" data-n="${n}" data-u="${esc(u.id)}" title="teste até hoje + ${n} dias">+${n} dias</button>`).join('')
-      + (u.teste_ate ? `<button class="mini" data-a="teste_prazo" data-n="0" data-u="${esc(u.id)}" title="tira o prazo: a licença volta a sair normalmente no plano do usuário">sem teste</button>` : '')
-      + `<br><button class="mini" data-a="set_recursos" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="recursos liberados por cima do plano (${esc(RECURSOS_EXTRA.join(', '))})">extras</button>`
-      // Lote 5 (A18/A19): atalho dos recursos INTERNOS da equipe (Oficina de Blocos + publicar catálogo) — grava por set_recursos
-      + (ehEquipe(u)
-        ? `<button class="mini" data-a="equipe" data-v="tirar" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="tem os recursos internos (${esc(RECURSOS_INTERNOS.join(', '))}); clique para tirar">✓ equipe</button>`
-        : `<button class="mini" data-a="equipe" data-v="dar" data-u="${esc(u.id)}" data-r="${esc((u.recursos_extra || []).join(', '))}" title="equipe do produto: dá os recursos internos (${esc(RECURSOS_INTERNOS.join(', '))}) por cima do plano">equipe</button>`);
-    const venc = u.licenca_ate ? (Date.parse(u.licenca_ate) < agora ? ' <span class="estado bloq">(vencida)</span>' : '') : '';
-    const linhaU = `<tr>
-      <td><strong>${esc(u.nome || '—')}</strong>${u.admin ? ' <span class="chip">admin</span>' : ''}<br><span class="suave pequeno">${esc(u.email)}</span></td>
-      <td>${situacao(u)}${situacaoTeste(u)}</td>
+      // K/C LEGADO: sem organização, quem ainda tem plano por usuário (conta antiga) pode passar a só olhar; o teste legado continua editável
+      + (!orgDe(u.organizacao) && u.plano && u.plano.degrau !== 'gratis'
+        ? `<br><span class="pequeno suave">${planoCurto(u)}</span> <button class="mini" data-a="set_degrau" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="sem organização a conta só olha; para editar, vincule a uma organização">passar a só olhar</button>`
+          + `<br><label class="pequeno suave">teste até <input type="date" class="mini" style="width:auto;padding:1px 4px" data-a="set_teste" data-u="${esc(u.id)}" value="${esc(u.teste_ate ? String(u.teste_ate).slice(0, 10) : '')}"></label> `
+          + PRAZOS_TESTE.map((n) => `<button class="mini" data-a="teste_prazo" data-n="${n}" data-u="${esc(u.id)}" title="teste até hoje + ${n} dias">+${n} dias</button>`).join('')
+          + (u.teste_ate ? `<button class="mini" data-a="teste_prazo" data-n="0" data-u="${esc(u.id)}" title="tira o prazo: a licença volta a sair normalmente no plano legado">sem teste</button>` : '')
+        : '')
+      // avançado: extras (exceções por cima do plano) e a marcação "Equipe StudioRP" (recursos internos: Oficina de Blocos + publicar catálogo)
+      + `<details class="avancado"><summary>avançado</summary>`
+      + `<div class="pequeno suave">Extras por cima do plano (exceções; valem na próxima renovação da licença):</div>`
+      + EXTRAS_EDITAVEIS.map((r) => `<label class="pequeno"><input type="checkbox" data-extra="${esc(r)}"${extras.includes(r) ? ' checked' : ''}> ${esc(NOME_EXTRA[r] || r)}</label>`).join('')
+      + `<button class="mini" data-a="set_recursos" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}">Salvar extras</button>`
+      + `<div style="margin-top:6px">` + (ehEquipe(u)
+        ? `<button class="mini" data-a="equipe" data-v="tirar" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}" title="tem os recursos internos (${esc(RECURSOS_INTERNOS.join(', '))})">Tirar da Equipe StudioRP</button>`
+        : `<button class="mini" data-a="equipe" data-v="dar" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}" title="equipe do produto: recursos internos (${esc(RECURSOS_INTERNOS.join(', '))}) por cima do plano">Marcar como Equipe StudioRP</button>`)
+      + `</div></details>`;
+  const venc = u.licenca_ate ? (Date.parse(u.licenca_ate) < agora ? ' <span class="estado bloq">(vencida)</span>' : '') : '';
+  const linhaU = `<tr>
+      <td><strong>${esc(u.nome || '—')}</strong>${u.admin ? ' <span class="chip">admin</span>' : ''}${ehEquipe(u) ? ' <span class="chip equipe" title="recursos internos: Oficina de Blocos e publicar catálogo">Equipe StudioRP</span>' : ''}<br><span class="suave pequeno">${esc(u.email)}</span><br><span class="suave pequeno">criado ${data(u.criado_em)}</span></td>
+      <td>${situacao(u)}${situacaoTeste(u)}<br><span class="pequeno suave">${planoCurto(u)}</span></td>
       <td>${eds}</td>
       <td class="pequeno">${dataHora(u.ultimo_login)}</td>
       <td class="pequeno">${data(u.licenca_ate)}${venc}</td>
@@ -810,7 +972,7 @@ function desenha() {
         <button class="mini ${u.bloqueado ? '' : 'perigo'}" data-a="bloquear_usuario" data-u="${esc(u.id)}" data-v="${u.bloqueado ? 'false' : 'true'}">${u.bloqueado ? 'Desbloquear' : 'Bloquear'}</button>
         ${u.admin ? '' : `<button class="mini perigo" data-a="excluir_usuario" data-u="${esc(u.id)}" data-email="${esc(u.email)}">Excluir</button>`}
       </div></td></tr>`;
-    const linhasM = u.maquinas.map((m) => `<tr class="maquina">
+  const linhasM = u.maquinas.map((m) => `<tr class="maquina">
       <td>↳ ${esc(m.nome || 'sem nome')}<br><span class="suave pequeno" title="${esc(m.hash)}">${esc(m.hash.slice(0, 12))}…</span></td>
       <td>${m.bloqueada ? '<span class="estado bloq">Bloqueado</span>' : '<span class="estado ok">Liberado</span>'}</td>
       <td class="pequeno" title="versão do app vista por último (no último pedido de licença deste computador)">app ${esc(m.versao_app || '?')}${/-beta\b/.test(m.versao_app || '') ? ' <span class="chip">beta</span>' : ''}</td>
@@ -821,11 +983,56 @@ function desenha() {
         <button class="mini ${m.bloqueada ? '' : 'perigo'}" data-a="bloquear_maquina" data-m="${esc(m.id)}" data-v="${m.bloqueada ? 'false' : 'true'}">${m.bloqueada ? 'Desbloquear' : 'Bloquear'}</button>
         <button class="mini" data-a="remover_maquina" data-m="${esc(m.id)}" title="Libera a vaga; se o computador voltar, entra como novo">Remover</button>
       </div></td></tr>`).join('');
-    return linhaU + linhasM;
-  }).join('');
+  return linhaU + linhasM;
 }
+// plano e teste da organização (cabeçalho do grupo) — gravam na hora, com confirmação na caixa própria
+$('t-corpo').addEventListener('change', async (ev) => {
+  const el = ev.target.closest('[data-a="set_plano_organizacao"], [data-a="set_teste_organizacao"]');
+  if (!el) return;
+  const o = orgDe(el.dataset.o), n = dados.usuarios.filter((u) => u.organizacao === el.dataset.o).length;
+  const plano = el.dataset.a === 'set_plano_organizacao';
+  const texto = plano ? `Mudar o plano de “${o.nome}” para ${nomePlano(el.value)}? Vale para os ${n} membro(s) na próxima renovação da licença.`
+    : el.value ? `Teste grátis de “${o.nome}” até ${dataTeste(el.value)}? Vale para os ${n} membro(s); vencido, todos só olham.` : `Tirar o prazo de teste de “${o.nome}”? Os ${n} membro(s) ficam com o plano sem prazo.`;
+  if (!(await caixa(texto, 'Gravar'))) return desenha();
+  el.disabled = true;
+  try {
+    await chamaAdmin(plano ? { acao: 'set_plano_organizacao', organizacao: o.id, plano: el.value } : { acao: 'set_teste_organizacao', organizacao: o.id, teste_ate: el.value || null });
+    await carrega(); avisa('t-msg', `“${o.nome}” atualizada. Vale na próxima renovação da licença dos membros.`, 'ok');
+  } catch (err) { avisa('t-msg', err.message); el.disabled = false; }
+});
+$('t-corpo').addEventListener('click', async (ev) => {
+  const nivel = ev.target.closest('[data-p]');   // selo do nível no cabeçalho do grupo → abre o perfil da organização
+  if (nivel) { $('p-org').value = nivel.dataset.p; avisa('p-msg', ''); preenchePerfil(); $('p-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const b = ev.target.closest('button[data-a]');
+  if (!b || !ACOES_F8.has(b.dataset.a)) return;
+  const a = b.dataset.a, corpo = {};
+  if (a === 'teste_org_prazo') {   // "+60 dias" / "+90 dias" a partir de hoje; "sem teste" = null — para a organização inteira
+    const n = Number(b.dataset.n) || 0, o = orgDe(b.dataset.o);
+    if (!n && !(await caixa(`Tirar o prazo de teste de “${o.nome}”? Todos os membros ficam com o plano sem prazo.`, 'Tirar o prazo'))) return;
+    Object.assign(corpo, { acao: 'set_teste_organizacao', organizacao: o.id, teste_ate: n ? somaDiasTeste(hojeTeste(), n) : null });
+  } else if (a === 'set_degrau') {   // legado, só sem organização: a conta passa a só olhar
+    if (!(await caixa(`Passar ${b.dataset.email} a só olhar? Para editar de novo, vincule a uma organização.`, 'Passar a só olhar'))) return;
+    Object.assign(corpo, { acao: 'set_degrau', usuario: b.dataset.u, degrau: 'gratis' });
+  } else {
+    const atuais = (b.dataset.r || '').split(',').map((x) => x.trim()).filter(Boolean);
+    corpo.usuario = b.dataset.u;
+    corpo.acao = 'set_recursos';   // extras e Equipe StudioRP: o mesmo contrato (set_recursos), preservando o resto
+    if (a === 'set_recursos') {
+      const marcados = [...b.closest('details').querySelectorAll('input[data-extra]:checked')].map((i) => i.dataset.extra);
+      corpo.recursos = [...marcados, ...atuais.filter((r) => !EXTRAS_EDITAVEIS.includes(r))];
+    } else {
+      const dar = b.dataset.v === 'dar';
+      if (!(await caixa(dar ? 'Marcar como Equipe StudioRP? Recebe os recursos internos (Oficina de Blocos e publicar catálogo) na próxima renovação da licença.' : 'Tirar da Equipe StudioRP? Perde os recursos internos na próxima renovação da licença.', dar ? 'Marcar' : 'Tirar'))) return;
+      corpo.recursos = dar ? [...new Set([...atuais, ...RECURSOS_INTERNOS])] : atuais.filter((r) => !RECURSOS_INTERNOS.includes(r));
+    }
+  }
+  b.disabled = true;
+  try { await chamaAdmin(corpo); await carrega(); avisa('t-msg', 'Gravado. Vale na próxima renovação da licença.', 'ok'); }
+  catch (e) { avisa('t-msg', e.message); b.disabled = false; }
+});
+// ───── fim F8
 
-// K: o <select> do plano grava na hora (set_degrau)
+// teste legado (sem organização), papel, organização — gravam na hora
 $('t-corpo').onchange = async (ev) => {
   const tst = ev.target.closest('input[data-a="set_teste"]');   // C: teste grátis — data do último dia (vazio = sem teste)
   if (tst) {
@@ -849,15 +1056,10 @@ $('t-corpo').onchange = async (ev) => {
     catch (err) { avisa('t-msg', err.message); org.disabled = false; }
     return;
   }
-  const sel = ev.target.closest('select[data-a="set_degrau"]');
-  if (!sel) return;
-  sel.disabled = true;
-  try { await chamaAdmin({ acao: 'set_degrau', usuario: sel.dataset.u, degrau: sel.value }); await carrega(); }
-  catch (err) { alert(err.message); sel.disabled = false; }
 };
 $('t-corpo').onclick = async (ev) => {
   const b = ev.target.closest('button[data-a]');
-  if (!b) return;
+  if (!b || ACOES_F8.has(b.dataset.a)) return;   // F8: plano/teste da organização, legado, extras e Equipe StudioRP no bloco F8
   const a = b.dataset.a, corpo = { acao: a };
   if (b.dataset.u) corpo.usuario = b.dataset.u;
   if (b.dataset.m) corpo.maquina = b.dataset.m;
@@ -866,14 +1068,6 @@ $('t-corpo').onclick = async (ev) => {
   if (a === 'retirar_edicao') { if (!confirm(`Retirar a edição "${b.dataset.e}"? O app para ao vencer a licença atual.`)) return; corpo.edicao = b.dataset.e; }
   if (a === 'liberar_edicao') { const e = prompt('Edição a liberar (studiorp; antigas: treo, rj, roboflexx, vinter, projectmaq):', 'studiorp'); if (!e) return; corpo.edicao = e.trim(); }
   if (a === 'renomear_usuario') { const n = prompt('Nome:'); if (!n) return; corpo.nome = n.trim(); }
-  if (a === 'set_recursos') { const r = prompt('Recursos extras por cima do plano (separados por vírgula; vazio = nenhum):\n' + RECURSOS_EXTRA.join(', ') + '\n(internos da equipe: ' + RECURSOS_INTERNOS.join(', ') + ')', b.dataset.r || ''); if (r === null) return; corpo.recursos = r.split(',').map((x) => x.trim()).filter(Boolean); }
-  if (a === 'equipe') {   // Lote 5: mesmo contrato (set_recursos); preserva os outros extras do usuário
-    const atuais = (b.dataset.r || '').split(',').map((x) => x.trim()).filter(Boolean);
-    const dar = b.dataset.v === 'dar';
-    if (!confirm(dar ? 'Dar a este usuário os recursos internos da equipe (Oficina de Blocos e publicar catálogo)? Vale na próxima renovação da licença do app.' : 'Tirar os recursos internos da equipe deste usuário? Vale na próxima renovação da licença do app.')) return;
-    corpo.acao = 'set_recursos';
-    corpo.recursos = dar ? [...new Set([...atuais, ...RECURSOS_INTERNOS])] : atuais.filter((r) => !RECURSOS_INTERNOS.includes(r));
-  }
   if (a === 'teste_prazo') {   // C: "+60 dias" / "+90 dias" a partir de hoje; "sem teste" = null
     const n = Number(b.dataset.n) || 0;
     corpo.acao = 'set_teste';
@@ -911,9 +1105,15 @@ $('p-copiar').onclick = async () => {
 $('p-fechar').onclick = () => { $('p-senha').value = ''; $('p-caixa').hidden = true; };
 
 function corpoNovo(acao) {
-  const corpo = { acao, email: $('i-email').value.trim(), nome: $('i-nome').value.trim(), edicao: $('i-edicao').value.trim(), degrau: $('i-degrau').value };
+  const corpo = { acao, email: $('i-email').value.trim(), nome: $('i-nome').value.trim(), edicao: $('i-edicao').value.trim() };
   if (!corpo.email || !$('i-email').checkValidity()) { avisa('i-msg', 'Digite um e-mail válido.'); return null; }
   if (!corpo.edicao || !$('i-edicao').checkValidity()) { avisa('i-msg', 'Digite a edição (ex.: studiorp).'); return null; }
+  // F8: organização obrigatória (ou "sem organização" explícito = só olhar) e papel; o plano e o teste vêm da organização
+  const org = $('i-org').value;
+  if (!org) { avisa('i-msg', 'Escolha a organização (ou “Sem organização”).'); return null; }
+  if (org === '-') { if (acao === 'criar') corpo.organizacao = null; else corpo.degrau = 'gratis'; }
+  else if (acao === 'criar') { corpo.organizacao = org; if (!$('i-papel').disabled && $('i-papel').value) corpo.papel = $('i-papel').value; }
+  else { avisa('i-msg', 'O convite por e-mail ainda não vincula organização: use “Criar usuário”.'); return null; }
   return corpo;
 }
 // padrão: cria a conta com senha provisória (sem e-mail)
@@ -928,7 +1128,7 @@ $('i-form').onsubmit = async (e) => {
   try {
     const r = await chamaAdmin(corpo);
     guarda('s1.edicao', corpo.edicao);
-    avisa('i-msg', `Usuário ${corpo.email} criado.`, 'ok');
+    avisa('i-msg', `Usuário ${corpo.email} criado` + (r.organizacao ? ` em ${(orgDe(r.organizacao) || { nome: 'organização' }).nome} (${nomePapel(r.papel)}).` : ' sem organização (só olhar).'), 'ok');
     mostraSenha('Senha provisória de ' + corpo.email + ':', r.senha);
     $('i-email').value = ''; $('i-nome').value = ''; $('i-senha').value = '';
     carrega();
