@@ -4,78 +4,148 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Studio · Acessos</title>
-<!-- S1-servidor · painel admin (um arquivo, sem build). Abra direto (file://) ou hospede em qualquer site estático.
-     Também serve como página de "definir senha" dos convites/recuperação quando hospedado (ver docs/S1-SERVIDOR.md). -->
+<meta name="color-scheme" content="light dark">
+<title>StudioRP · Painel</title>
+<!-- Painel do operador (um arquivo, sem build, sem framework). Abra direto (file://) ou hospede em qualquer site estático — hoje no GitHub
+     Pages do repositório de releases. Fala com as funções `admin` e `licenca` do Supabase (mesmas ações e campos de sempre).
+     Também serve como página de "definir senha" dos convites/recuperação quando hospedado (docs/S1-SERVIDOR.md).
+     F031-E (D69): abas · tema claro/escuro · busca global · sem nível Parceiro · sem seletor de edição · nenhum diálogo nativo. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
-    --fundo: #f5f6f8; --cartao: #ffffff; --texto: #1f2933; --suave: #616e7c; --linha: #e1e4e8;
-    --acento: #1f2933; --acento-texto: #ffffff; --perigo: #b42318; --ok: #1a7f37; --aviso: #9a6700; --chip: #eef0f3;
+    --fundo: #f3f4f6; --cartao: #ffffff; --texto: #1f2933; --suave: #5f6b78; --linha: #dfe3e8; --linha-forte: #c4cad2;
+    --acento: #1f2933; --acento-texto: #ffffff; --realce: #0e7c6b; --realce-suave: #e3f3f0;
+    --perigo: #b42318; --perigo-suave: #fde8e6; --ok: #1a7f37; --ok-suave: #e3f5e8; --aviso: #8a5a00; --aviso-suave: #fff4d6;
+    --chip: #eceff2; --sombra: 0 1px 2px rgba(16, 24, 40, .06);
     color-scheme: light;
   }
+  /* tema escuro: pelo sistema (sem escolha) ou pela escolha do operador (data-tema) */
   @media (prefers-color-scheme: dark) {
-    :root { --fundo: #14171a; --cartao: #1c2024; --texto: #e6e8eb; --suave: #9aa4af; --linha: #2c3238;
-      --acento: #e6e8eb; --acento-texto: #14171a; --perigo: #ff7b72; --ok: #56d364; --aviso: #e3b341; --chip: #262b31; color-scheme: dark; }
+    :root:not([data-tema="claro"]) { --fundo: #121417; --cartao: #1b1f24; --texto: #e6e8eb; --suave: #98a2ad; --linha: #2a3038; --linha-forte: #3b434d;
+      --acento: #e6e8eb; --acento-texto: #121417; --realce: #4fd1b5; --realce-suave: #14302b;
+      --perigo: #ff7b72; --perigo-suave: #3a1d1b; --ok: #56d364; --ok-suave: #183424; --aviso: #e3b341; --aviso-suave: #3a3012;
+      --chip: #262c33; --sombra: 0 1px 2px rgba(0, 0, 0, .4); color-scheme: dark; }
   }
+  :root[data-tema="escuro"] { --fundo: #121417; --cartao: #1b1f24; --texto: #e6e8eb; --suave: #98a2ad; --linha: #2a3038; --linha-forte: #3b434d;
+    --acento: #e6e8eb; --acento-texto: #121417; --realce: #4fd1b5; --realce-suave: #14302b;
+    --perigo: #ff7b72; --perigo-suave: #3a1d1b; --ok: #56d364; --ok-suave: #183424; --aviso: #e3b341; --aviso-suave: #3a3012;
+    --chip: #262c33; --sombra: 0 1px 2px rgba(0, 0, 0, .4); color-scheme: dark; }
+
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--linha); background: var(--cartao); }
-  header h1 { font-size: 16px; font-weight: 600; margin: 0; }
-  main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
-  .cartao { background: var(--cartao); border: 1px solid var(--linha); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-  .cartao h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
-  .estreito { max-width: 400px; margin: 48px auto; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.45 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  h1, h2, h3 { font-weight: 600; margin: 0; }
+  a { color: var(--realce); }
+  [hidden] { display: none !important; }
+  .suave { color: var(--suave); }
+  .pequeno { font-size: 12px; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .nada { color: var(--suave); font-size: 13px; padding: 10px 0; }
+
+  /* topo: marca · busca global · sessão */
+  header.topo { display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--cartao); border-bottom: 1px solid var(--linha); position: sticky; top: 0; z-index: 5; }
+  .topo-marca { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+  .topo-marca .logo { width: 28px; height: 28px; border-radius: 7px; background: var(--acento); color: var(--acento-texto); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; letter-spacing: .02em; }
+  .topo-marca h1 { font-size: 15px; white-space: nowrap; }
+  .topo-busca { flex: 1 1 320px; max-width: 560px; }
+  .topo-busca input { width: 100%; }
+  .topo-sessao { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+  .topo-sessao .estado { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* abas */
+  nav.abas { display: flex; gap: 2px; padding: 0 12px; background: var(--cartao); border-bottom: 1px solid var(--linha); overflow-x: auto; scrollbar-width: thin; position: sticky; top: 49px; z-index: 4; }
+  nav.abas button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 10px 12px; color: var(--suave); font-weight: 500; white-space: nowrap; }
+  nav.abas button:hover { color: var(--texto); border-color: var(--linha-forte); }
+  nav.abas button[aria-selected="true"] { color: var(--texto); border-bottom-color: var(--realce); }
+  nav.abas .conta { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--chip); color: var(--suave); font-size: 11px; line-height: 18px; text-align: center; font-weight: 600; }
+  nav.abas .conta:empty { display: none; }
+  main { max-width: 1240px; margin: 0 auto; padding: 18px 16px 64px; }
+  .aba > .cabeca { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; justify-content: space-between; margin: 2px 0 12px; }
+  .aba > .cabeca h2 { font-size: 17px; }
+  .aba > .cabeca p { margin: 0; flex: 1 1 100%; }
+
+  /* cartões, formulários */
+  .cartao { background: var(--cartao); border: 1px solid var(--linha); border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: var(--sombra); }
+  .cartao h2, .cartao h3 { font-size: 14px; margin: 0 0 10px; }
+  .cartao .cabeca { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cartao .cabeca h2, .cartao .cabeca h3 { margin: 0; }
+  .duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+  .duas > .cartao { margin-bottom: 0; }
+  .estreito { max-width: 420px; margin: 48px auto; }
   label { display: block; font-size: 12px; color: var(--suave); margin-bottom: 4px; }
-  input, select { width: 100%; padding: 7px 9px; border: 1px solid var(--linha); border-radius: 6px; background: var(--fundo); color: var(--texto); font: inherit; }
+  label.caixa { display: inline-flex; align-items: center; gap: 6px; color: var(--texto); margin: 0; font-size: 13px; }
+  label.caixa input { width: auto; }
+  input, select, textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--linha-forte); border-radius: 7px; background: var(--fundo); color: var(--texto); font: inherit; min-height: 34px; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--realce); outline-offset: 1px; }
+  input[type="color"] { width: 46px; padding: 2px; }
+  input[type="search"] { padding-left: 10px; }
+  input.mini, select.mini { width: auto; padding: 2px 6px; min-height: 26px; font-size: 12.5px; }
+  textarea { resize: vertical; }
   .campo { margin-bottom: 12px; }
+  .campo .dica { font-size: 12px; color: var(--suave); margin: 4px 0 0; }
   .linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
   .linha > .campo { flex: 1 1 160px; margin-bottom: 0; }
-  button { font: inherit; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--linha); background: var(--cartao); color: var(--texto); cursor: pointer; white-space: nowrap; }
+  .linha.compacta { gap: 6px; align-items: center; }
+  button { font: inherit; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--linha-forte); background: var(--cartao); color: var(--texto); cursor: pointer; white-space: nowrap; min-height: 34px; }
   button:hover { border-color: var(--suave); }
   button.primario { background: var(--acento); color: var(--acento-texto); border-color: var(--acento); }
   button.perigo { color: var(--perigo); }
-  button.mini { padding: 2px 8px; font-size: 12px; }
+  button.mini { padding: 2px 8px; font-size: 12px; min-height: 26px; }
+  button.link { border: 0; background: none; color: var(--realce); padding: 0 2px; min-height: 0; text-decoration: underline; }
   button:disabled { opacity: .5; cursor: default; }
-  .msg { padding: 8px 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; display: none; }
-  .msg.erro { display: block; color: var(--perigo); border: 1px solid var(--perigo); }
-  .msg.ok { display: block; color: var(--ok); border: 1px solid var(--ok); }
-  .suave { color: var(--suave); }
-  .pequeno { font-size: 12px; }
+  .msg { padding: 8px 10px; border-radius: 7px; margin-top: 10px; font-size: 13px; display: none; }
+  .msg.erro { display: block; color: var(--perigo); background: var(--perigo-suave); border: 1px solid var(--perigo); }
+  .msg.ok { display: block; color: var(--ok); background: var(--ok-suave); border: 1px solid var(--ok); }
+  .msg.aviso { display: block; color: var(--aviso); background: var(--aviso-suave); border: 1px solid var(--aviso); }
+
+  /* tabelas */
   .tabela-rolagem { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--linha); vertical-align: top; }
-  th { font-size: 12px; font-weight: 600; color: var(--suave); }
+  th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th { font-size: 12px; font-weight: 600; color: var(--suave); white-space: nowrap; }
+  th.ord { cursor: pointer; user-select: none; }
+  th.ord:hover { color: var(--texto); }
+  th.ord[data-dir="asc"]::after { content: " ↑"; }
+  th.ord[data-dir="desc"]::after { content: " ↓"; }
+  tr.grupo td { background: var(--chip); border-top: 2px solid var(--linha); }
   tr.maquina td { background: var(--fundo); font-size: 13px; }
   tr.maquina td:first-child { padding-left: 22px; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--chip); border-radius: 10px; padding: 1px 8px; font-size: 12px; margin: 0 4px 4px 0; }
-  .chip button { border: 0; background: none; padding: 0 2px; color: var(--suave); }
+  td.acoes-col { white-space: nowrap; }
+  .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .grupo-cab { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+
+  /* chips e estados */
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--chip); border-radius: 10px; padding: 1px 8px; font-size: 12px; margin: 0 4px 2px 0; white-space: nowrap; }
+  .chip button { border: 0; background: none; padding: 0 2px; color: var(--suave); min-height: 0; }
+  .chip.plano { background: var(--realce-suave); color: var(--realce); font-weight: 600; }
+  .chip.plano.antigo { background: var(--aviso-suave); color: var(--aviso); }
+  .chip.plano.convidada { background: var(--chip); color: var(--texto); }
+  .chip.equipe { background: var(--acento); color: var(--acento-texto); }
+  .chip.nivel { cursor: pointer; }
+  .chip.nivel-grupo { background: var(--acento); color: var(--acento-texto); }
+  .chip.nivel-padrao { background: var(--chip); }
+  .chip.nivel-parceiro { background: var(--aviso-suave); color: var(--aviso); }
   .estado { font-size: 12px; font-weight: 600; }
   .estado.ok { color: var(--ok); } .estado.bloq { color: var(--perigo); } .estado.pend { color: var(--aviso); }
-  .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
-  [hidden] { display: none !important; }
-  .senha-caixa { border: 1px solid var(--ok); border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .cor { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--linha-forte); vertical-align: -1px; margin-right: 4px; }
+  .logo-mini { max-height: 22px; max-width: 80px; object-fit: contain; background: #fff; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+  .org-previa { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--linha-forte); border-radius: 8px; min-height: 52px; }
+  .org-previa img { max-height: 32px; max-width: 120px; object-fit: contain; background: #fff; border-radius: 4px; }
+  .org-previa .org-nome { font-weight: 600; border-left: 3px solid var(--linha); padding-left: 8px; }
+  .org-lista { list-style: none; margin: 12px 0 0; padding: 0; }
+  .org-lista li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--linha); flex-wrap: wrap; }
+  .org-lista .nome { flex: 1; min-width: 200px; }
+  .org-lista img { max-height: 32px; max-width: 120px; object-fit: contain; background: #fff; border-radius: 4px; }
+  .p-regra { font-size: 12.5px; color: var(--suave); margin: 4px 0 10px; }
+  .senha-caixa { border: 1px solid var(--ok); background: var(--ok-suave); border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
   .senha-caixa .linha input { font: 600 16px/1.3 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .04em; }
   .senha-caixa .aviso { color: var(--aviso); font-size: 12.5px; margin: 8px 0 0; }
   details.secundario { margin-top: 14px; }
   details.secundario summary { cursor: pointer; color: var(--suave); font-size: 13px; }
-  /* N · organizações (personalização por cliente) */
-  textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--linha); border-radius: 6px; background: var(--fundo); color: var(--texto); font: inherit; resize: vertical; }
-  input[type="color"] { width: 46px; height: 32px; padding: 2px; }
-  .org-previa { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--linha); border-radius: 8px; min-height: 52px; }
-  .org-previa img, .org-lista img { max-height: 32px; max-width: 120px; object-fit: contain; background: #fff; border-radius: 4px; }
-  .org-previa .org-nome { font-weight: 600; border-left: 3px solid var(--linha); padding-left: 8px; }
-  .org-lista { list-style: none; margin: 12px 0 0; padding: 0; }
-  .org-lista li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--linha); }
-  .org-lista .cor { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--linha); flex: none; }
-  .org-lista .nome { flex: 1; }
-  /* U1 · perfil da organização (nível, co-marca, tema, catálogos, canal) */
-  .chip.nivel-grupo { background: var(--acento); color: var(--acento-texto); }
-  .chip.nivel-parceiro { border: 1px solid var(--acento); background: transparent; }
-  .chip.nivel-padrao { background: var(--chip); }
-  .chip.nivel { cursor: pointer; }
-  .p-regra { font-size: 12.5px; color: var(--suave); margin: 4px 0 10px; }
-  /* A2 · pedidos de bloco (Solicitar bloco) */
+  details.avancado { margin-top: 6px; }
+  details.avancado summary { cursor: pointer; color: var(--suave); font-size: 12px; }
+  details.avancado label { display: inline-flex; align-items: center; gap: 4px; margin: 2px 8px 2px 0; color: var(--texto); }
+  details.avancado input[type="checkbox"] { width: auto; min-height: 0; }
   .ped-lista { list-style: none; margin: 12px 0 0; padding: 0; }
   .ped-lista > li { padding: 10px 0; border-bottom: 1px solid var(--linha); }
   .ped-lista .cab { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
@@ -83,33 +153,67 @@
   .ped-lista .resp { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
   .ped-lista .resp input { flex: 1 1 260px; width: auto; }
   .ped-lista .resp select { width: auto; }
-  /* F8 · usuários agrupados por organização (plano e teste da organização), avançado, caixa de confirmação própria */
-  tr.grupo td { background: var(--chip); border-top: 2px solid var(--linha); }
-  .grupo-cab { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
-  .grupo-cab select, .grupo-cab input[type="date"] { width: auto; padding: 1px 4px; }
-  .chip.equipe { background: var(--acento); color: var(--acento-texto); }
-  details.avancado { margin-top: 6px; }
-  details.avancado summary { cursor: pointer; color: var(--suave); font-size: 12px; }
-  details.avancado label { display: inline-flex; align-items: center; gap: 4px; margin: 2px 8px 2px 0; color: var(--texto); }
-  details.avancado input[type="checkbox"] { width: auto; }
-  dialog#cx { border: 1px solid var(--linha); border-radius: 8px; background: var(--cartao); color: var(--texto); max-width: 440px; padding: 16px; }
-  dialog#cx::backdrop { background: rgba(0, 0, 0, .35); }
+  .resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .resumo div { border: 1px solid var(--linha); border-radius: 8px; padding: 10px 12px; }
+  .resumo b { display: block; font-size: 20px; font-weight: 600; }
+  .resumo span { font-size: 12px; color: var(--suave); }
+  dialog#cx { border: 1px solid var(--linha); border-radius: 10px; background: var(--cartao); color: var(--texto); max-width: 460px; width: calc(100% - 32px); padding: 16px; box-shadow: 0 8px 30px rgba(0, 0, 0, .25); }
+  dialog#cx::backdrop { background: rgba(0, 0, 0, .4); }
+  dialog#cx p { margin: 0 0 12px; white-space: pre-line; }
+  dialog#cx input { margin-bottom: 12px; }
+
+  /* responsivo até 400 px */
+  @media (max-width: 760px) {
+    header.topo { flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+    .topo-busca { order: 3; flex: 1 1 100%; max-width: none; }
+    .topo-sessao .estado { max-width: 140px; }
+    nav.abas { top: 0; position: static; padding: 0 6px; }
+    main { padding: 12px 10px 48px; }
+    .cartao { padding: 12px; border-radius: 8px; }
+    th, td { padding: 6px 5px; }
+    .duas { grid-template-columns: 1fr; }
+    .estreito { margin: 20px auto; }
+  }
+  @media (max-width: 400px) {
+    body { font-size: 13.5px; }
+    header.topo { padding: 8px 10px; }
+    .topo-marca h1 { font-size: 14px; }
+    nav.abas button { padding: 8px 9px; font-size: 12.5px; }
+    main { padding: 10px 8px 40px; }
+    .linha > .campo { flex-basis: 100%; }
+    .cartao .cabeca { flex-direction: column; align-items: stretch; }
+    .acoes button { flex: 1 1 auto; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Studio · Acessos</h1>
-  <div class="linha"><span id="quem" class="suave pequeno"></span><button id="sair" class="mini" hidden>Sair</button></div>
+<header class="topo">
+  <div class="topo-marca"><span class="logo" aria-hidden="true">S</span><h1>StudioRP · Painel</h1></div>
+  <div class="topo-busca" id="topo-busca" hidden><input id="f-busca" type="search" placeholder="Buscar organização, pessoa, e-mail ou computador" aria-label="Busca global"></div>
+  <div class="topo-sessao">
+    <span id="quem" class="suave pequeno estado" title="operador desta sessão"></span>
+    <span id="sessao-estado" class="estado"></span>
+    <button id="tema" class="mini" type="button" title="Alternar tema claro, escuro ou automático">Tema: automático</button>
+    <button id="sair" class="mini" type="button" hidden>Sair</button>
+  </div>
 </header>
+<nav id="abas" class="abas" role="tablist" aria-label="Seções do painel" hidden>
+  <button role="tab" type="button" data-aba="organizacoes" aria-selected="true" aria-controls="aba-organizacoes">Organizações<span class="conta" id="n-organizacoes"></span></button>
+  <button role="tab" type="button" data-aba="pessoas" aria-selected="false" aria-controls="aba-pessoas">Pessoas e assentos<span class="conta" id="n-pessoas"></span></button>
+  <button role="tab" type="button" data-aba="licencas" aria-selected="false" aria-controls="aba-licencas">Licenças<span class="conta" id="n-licencas"></span></button>
+  <button role="tab" type="button" data-aba="destaque" aria-selected="false" aria-controls="aba-destaque">Destaque<span class="conta" id="n-destaque"></span></button>
+  <button role="tab" type="button" data-aba="pedidos" aria-selected="false" aria-controls="aba-pedidos">Pedidos de bloco<span class="conta" id="n-pedidos"></span></button>
+  <button role="tab" type="button" data-aba="operacao" aria-selected="false" aria-controls="aba-operacao">Operação</button>
+</nav>
 
 <main>
-  <!-- 1. Conexão com o projeto Supabase (URL e anon key são públicas por natureza) -->
+  <!-- 1. Conexão com o projeto Supabase (URL e chave publishable são públicas por natureza) -->
   <section id="v-conexao" class="cartao estreito" hidden>
     <h2>Conectar ao projeto</h2>
     <p class="suave pequeno">No Supabase: <em>Project Settings › API</em>. Fica guardado só neste navegador.</p>
     <div class="campo"><label for="c-url">Project URL</label><input id="c-url" placeholder="https://xxxx.supabase.co"></div>
     <div class="campo"><label for="c-anon">anon / publishable key</label><input id="c-anon" placeholder="eyJ… ou sb_publishable_…"></div>
-    <button id="c-salvar" class="primario">Salvar</button>
+    <button id="c-salvar" class="primario" type="button">Salvar</button>
     <div id="c-msg" class="msg"></div>
   </section>
 
@@ -119,13 +223,14 @@
     <p class="suave pequeno" id="s-email"></p>
     <div class="campo"><label for="s-1">Nova senha (mínimo 10 caracteres)</label><input id="s-1" type="password" autocomplete="new-password"></div>
     <div class="campo"><label for="s-2">Repita a senha</label><input id="s-2" type="password" autocomplete="new-password"></div>
-    <button id="s-salvar" class="primario">Salvar senha</button>
+    <button id="s-salvar" class="primario" type="button">Salvar senha</button>
     <div id="s-msg" class="msg"></div>
   </section>
 
   <!-- 3. Login -->
   <section id="v-login" class="cartao estreito" hidden>
     <h2>Entrar</h2>
+    <p class="suave pequeno">Só contas administradoras (equipe do StudioRP). Para usar o Studio, entre pelo aplicativo.</p>
     <form id="l-form">
       <div class="campo"><label for="l-email">E-mail</label><input id="l-email" type="email" autocomplete="username" required></div>
       <div class="campo"><label for="l-senha">Senha</label><input id="l-senha" type="password" autocomplete="current-password" required></div>
@@ -135,196 +240,269 @@
     <p class="pequeno suave" style="margin-top:16px"><a href="#" id="l-trocar" class="suave">Trocar projeto</a></p>
   </section>
 
-  <!-- 4. Painel -->
+  <!-- 4. Painel (abas) -->
   <section id="v-painel" hidden>
-    <div class="cartao">
-      <h2>Novo usuário</h2>
-      <form id="i-form" class="linha">
-        <div class="campo"><label for="i-email">E-mail</label><input id="i-email" type="email" required></div>
-        <div class="campo"><label for="i-nome">Nome</label><input id="i-nome"></div>
-        <div class="campo" style="flex:0 1 140px"><label for="i-edicao">Edição</label><select id="i-edicao" required><option value="studiorp">StudioRP (0.3.0 · padrão)</option><option value="treo">TREO Studio</option><option value="rj">RJ StudioRP</option><option value="roboflexx">Roboflexx StudioRP</option><option value="vinter">Vinter StudioRP</option><option value="projectmaq">Projectmaq StudioRP</option></select></div>
-        <div class="campo" style="flex:0 1 200px"><label for="i-org">Organização</label><select id="i-org" required><option value="">— escolha —</option><option value="-">Sem organização (só olhar)</option></select></div>
-        <div class="campo" style="flex:0 1 150px"><label for="i-papel">Papel</label><select id="i-papel"></select></div>
-        <div class="campo"><label for="i-senha">Senha provisória (opcional)</label><input id="i-senha" type="text" autocomplete="off" spellcheck="false" placeholder="em branco = gerar uma forte"></div>
-        <button class="primario" type="submit" id="i-criar">Criar usuário (senha provisória)</button>
-      </form>
-      <p class="pequeno" id="i-plano"></p>
-      <p class="pequeno suave">Sem e-mail: a conta já nasce confirmada. Entregue a senha provisória à pessoa; no 1º login o app obriga a criar a própria senha.</p>
-      <details class="secundario">
-        <summary>Convidar por e-mail (precisa de SMTP próprio)</summary>
-        <p class="pequeno suave">O e-mail padrão do Supabase (plano gratuito) não entrega convites para fora da equipe do projeto. Use só depois de configurar um SMTP próprio (docs/S1-SERVIDOR.md, passo 3).</p>
-        <button type="button" id="i-convidar">Convidar por e-mail</button>
-      </details>
-      <div id="i-msg" class="msg"></div>
-      <div id="p-caixa" class="senha-caixa" hidden>
-        <div class="pequeno" id="p-titulo"></div>
-        <div class="linha" style="margin-top:8px">
-          <div class="campo"><input id="p-senha" readonly aria-label="Senha provisória"></div>
-          <button type="button" id="p-copiar" class="primario">Copiar</button>
-          <button type="button" id="p-fechar">Já entreguei — esconder</button>
-        </div>
-        <p class="aviso">Esta senha aparece só agora. Entregue-a por um canal seguro (pessoalmente, ligação ou mensagem temporária) — nunca junto com o e-mail de login na mesma mensagem. No 1º login o app pede para criar uma senha nova.</p>
-        <div id="p-msg" class="msg"></div>
-      </div>
-    </div>
 
-    <!-- N · organizações: personalização MÍNIMA por cliente como dado (nome, logo, cor, Sobre) — docs/N-PERSONALIZACAO-CLIENTE.md -->
-    <div class="cartao" id="o-cartao">
-      <h2>Organizações (personalização por cliente)</h2>
-      <p class="pequeno suave">Nome, logo e cor aparecem no app de quem estiver vinculado (topo, tela inicial, “Sobre” e carimbo de Lista, Proposta, DXF e visualizador). Vale para qualquer edição; muda na próxima renovação da licença do app. Vincule o usuário na lista abaixo (coluna Edições › organização).</p>
-      <form id="o-form">
-        <input type="hidden" id="o-id">
+    <!-- ══ Organizações: lista com filtro e ordem; dados, plano e teste (N + F8); perfil, tema, catálogos e assentos (U1 + F6a + F8) -->
+    <section class="aba" id="aba-organizacoes" role="tabpanel">
+      <div class="cabeca">
+        <h2>Organizações</h2>
+        <div class="linha compacta">
+          <select id="og-plano" class="mini" aria-label="filtrar por plano"><option value="">todos os planos</option></select>
+          <select id="og-ordem" class="mini" aria-label="ordem"><option value="nome">A–Z</option><option value="recente">mais recentes primeiro</option><option value="plano">por plano</option></select>
+          <button id="og-nova" class="mini primario" type="button">Nova organização</button>
+          <button id="og-atualizar" class="mini" type="button">Atualizar</button>
+        </div>
+        <p class="pequeno suave">Plano, teste e assentos valem para todos os membros na próxima renovação da licença do app. Sem nível Parceiro: só Padrão (cara StudioRP) ou Grupo (tema próprio). Dados de exemplo são fictícios.</p>
+      </div>
+      <div class="cartao">
+        <div class="tabela-rolagem">
+          <table id="og-tabela">
+            <thead><tr><th>Organização</th><th>Plano</th><th>Teste grátis</th><th>Assentos</th><th>Membros</th><th>Perfil</th><th></th></tr></thead>
+            <tbody id="og-corpo"><tr><td colspan="7" class="nada">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+        <div id="og-msg" class="msg"></div>
+      </div>
+
+      <div class="duas">
+        <!-- N · dados da organização como DADO (nome, logo, cor, Sobre) — docs/N-PERSONALIZACAO-CLIENTE.md · F8 (D40): plano e teste da organização -->
+        <div class="cartao" id="o-cartao">
+          <div class="cabeca"><h3 id="o-titulo">Nova organização</h3><button type="button" class="mini" id="o-novo" hidden>Cancelar edição</button></div>
+          <p class="pequeno suave" style="margin-top:0">Nome, logo e cor aparecem no app de quem estiver vinculado (topo, tela inicial, “Sobre” e carimbo de Lista, Proposta, DXF e visualizador). Muda na próxima renovação da licença do app.</p>
+          <form id="o-form">
+            <input type="hidden" id="o-id">
+            <div class="linha">
+              <div class="campo"><label for="o-nome">Nome da empresa</label><input id="o-nome" maxlength="120" required placeholder="Empresa Exemplo"></div>
+              <div class="campo" style="flex:0 1 170px"><label for="o-cor">Cor de destaque</label><div class="linha compacta" style="flex-wrap:nowrap"><input id="o-cor" type="color" value="#0e8f7e"><label class="caixa"><input type="checkbox" id="o-sem-cor"> sem cor</label></div></div>
+            </div>
+            <div class="campo" style="margin-top:10px"><label for="o-logo">Logo (PNG ou SVG, até 256 KB)</label><input id="o-logo" type="file" accept=".png,.svg,image/png,image/svg+xml"></div>
+            <div class="linha" id="o-plano-linha" hidden>
+              <div class="campo" style="flex:0 1 190px"><label for="o-plano">Plano</label><select id="o-plano"></select></div>
+              <div class="campo" style="flex:0 1 190px"><label for="o-teste">Teste grátis até (vazio = sem teste)</label><input id="o-teste" type="date"></div>
+              <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><button type="button" class="mini" id="o-teste-padrao" title="prazo padrão do plano escolhido, a partir de hoje">teste padrão do plano</button></div>
+            </div>
+            <p class="campo dica" id="o-plano-dica" style="margin-top:6px"></p>
+            <div class="campo"><label for="o-sobre">Texto do “Sobre” (até 2000 caracteres)</label><textarea id="o-sobre" rows="3" maxlength="2000"></textarea></div>
+            <div class="campo"><label>Prévia</label><div class="org-previa" id="o-previa"><img id="o-previa-logo" alt="" hidden><span class="org-nome" id="o-previa-nome">—</span><button type="button" class="mini" id="o-tirar-logo" hidden>tirar logo</button></div></div>
+            <div class="linha"><button class="primario" type="submit" id="o-salvar">Criar organização</button></div>
+          </form>
+          <div id="o-msg" class="msg"></div>
+          <ul class="org-lista" id="o-lista" hidden></ul>
+        </div>
+
+        <!-- U1 · perfil da organização: nível (Padrão · Grupo), canal, tema curado, co-marca, catálogos visíveis, modo Vender (W8) — docs/U1-CONTRATO-PERFIL.md -->
+        <div class="cartao" id="p-cartao" hidden>
+          <div class="cabeca"><h3>Perfil, tema e assentos</h3></div>
+          <form id="p-form">
+            <div class="linha">
+              <div class="campo"><label for="p-org">Organização</label><select id="p-org"></select></div>
+              <div class="campo" style="flex:0 1 150px"><label for="p-nivel">Nível</label><select id="p-nivel"></select></div>
+              <div class="campo" style="flex:0 1 150px"><label for="p-canal">Canal de atualização</label><select id="p-canal"></select></div>
+            </div>
+            <p class="p-regra" id="p-regra"></p>
+            <div class="linha">
+              <div class="campo"><label for="p-tema">Tema (só no nível Grupo; fica travado)</label><select id="p-tema"></select></div>
+              <div class="campo"><label for="p-comarca">Co-marca (vazio = a padrão do nível)</label><input id="p-comarca" maxlength="80" placeholder="Empresa Studio · by StudioRP"></div>
+              <div class="campo" style="flex:0 1 130px"><label for="p-comarca-pos">Onde</label><select id="p-comarca-pos"><option value="barra">na barra</option><option value="sobre">no “Sobre”</option></select></div>
+            </div>
+            <div class="campo" style="margin-top:10px"><label for="p-publicos">Catálogos públicos visíveis</label>
+              <label class="caixa" style="margin:0 0 6px"><input type="checkbox" id="p-todos"> todos os públicos</label>
+              <input id="p-publicos" placeholder="ids separados por vírgula (ex.: cat-fabricante-1, cat-fabricante-2)"></div>
+            <div class="campo"><label class="caixa"><input type="checkbox" id="p-proprio"> catálogo próprio da organização (“Meus blocos”, qualquer nível)</label></div>
+            <div class="campo"><label class="caixa" title="W8 (D51): toda a equipe fica no modo Vender (sem simulação, custos, ferramentas de engenharia nem DXF/3D na frente do cliente) e ninguém sai pelo atalho; o Gestor da organização também liga/desliga pelo app (Membros…)"><input type="checkbox" id="p-vender"> modo Vender forçado para toda a organização</label></div>
+            <div class="linha"><button class="primario" type="submit" id="p-salvar">Salvar perfil</button></div>
+          </form>
+          <!-- F8 (D40 a–b) · assentos do plano: pagos (gestor, comercial, engenharia) e de Leitura; a equipe amplia -->
+          <div id="p-f8-assentos" hidden>
+            <h3 style="margin-top:16px">Assentos do plano</h3>
+            <div class="linha">
+              <div class="campo" style="flex:0 1 150px"><label for="p-pagos">Assentos pagos</label><input id="p-pagos" type="number" min="1" max="500" step="1"></div>
+              <div class="campo" style="flex:0 1 150px"><label for="p-leitura">Assentos de Leitura</label><input id="p-leitura" type="number" min="0" max="500" step="1"></div>
+              <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><label class="caixa"><input type="checkbox" id="p-leitura-conta"> Leitura ocupa assento pago</label></div>
+              <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><button type="button" id="p-f8-salvar">Salvar assentos</button></div>
+            </div>
+            <p class="pequeno suave" id="p-f8-uso" style="margin:6px 0 0"></p>
+          </div>
+          <!-- F6a (D38) · assentos de Gestor: papel ≠ plano; o gestor da organização não promove além disso -->
+          <div id="p-assentos-linha" hidden>
+            <div class="linha" style="margin-top:10px">
+              <div class="campo" style="flex:0 1 150px"><label for="p-assentos">Assentos de Gestor</label><input id="p-assentos" type="number" min="1" max="50" step="1"></div>
+              <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><button type="button" id="p-assentos-salvar">Salvar assentos de Gestor</button></div>
+            </div>
+            <p class="pequeno suave" id="p-assentos-uso" style="margin:6px 0 0"></p>
+          </div>
+          <div id="p-msg" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ Pessoas e assentos: criar pessoa (S1 senha provisória), lista agrupada por organização (F8), papel (A1/F6a), vínculo (N), extras e Equipe (lote 5) -->
+    <section class="aba" id="aba-pessoas" role="tabpanel" hidden>
+      <div class="cabeca">
+        <h2>Pessoas e assentos</h2>
+        <div class="linha compacta">
+          <select id="f-org" class="mini" aria-label="filtrar por organização"><option value="">todas as organizações</option><option value="-">sem organização</option></select>
+          <select id="f-ordem" class="mini" aria-label="ordem"><option value="recente">mais recentes primeiro</option><option value="az">A–Z</option></select>
+          <button id="f-atualizar" class="mini" type="button">Atualizar</button>
+        </div>
+        <p class="pequeno suave">Assento = pessoa nomeada que edita (Gestor, Comercial, Engenharia); Leitura é grátis. Cada organização mostra o plano, o teste e os assentos em uso; plano e teste se ajustam na aba Licenças. Sem organização = só olhar.</p>
+      </div>
+      <div class="cartao">
+        <h3>Nova pessoa</h3>
+        <form id="i-form" class="linha">
+          <div class="campo"><label for="i-email">E-mail</label><input id="i-email" type="email" required></div>
+          <div class="campo"><label for="i-nome">Nome</label><input id="i-nome"></div>
+          <div class="campo" style="flex:0 1 220px"><label for="i-org">Organização</label><select id="i-org" required><option value="">— escolha —</option><option value="-">Sem organização (só olhar)</option></select></div>
+          <div class="campo" style="flex:0 1 150px"><label for="i-papel">Papel</label><select id="i-papel"></select></div>
+          <div class="campo"><label for="i-senha">Senha provisória (opcional)</label><input id="i-senha" type="text" autocomplete="off" spellcheck="false" placeholder="em branco = gerar uma forte"></div>
+          <button class="primario" type="submit" id="i-criar">Criar usuário (senha provisória)</button>
+        </form>
+        <p class="pequeno" id="i-plano" style="margin:8px 0 0"></p>
+        <p class="pequeno suave">Sem e-mail: a conta já nasce confirmada. Entregue a senha provisória à pessoa; no 1º login o app obriga a criar a própria senha.</p>
+        <details class="secundario">
+          <summary>Convidar por e-mail (precisa de SMTP próprio)</summary>
+          <p class="pequeno suave">O e-mail padrão do Supabase (plano gratuito) não entrega convites para fora da equipe do projeto. Use só depois de configurar um SMTP próprio (docs/S1-SERVIDOR.md, passo 3).</p>
+          <button type="button" id="i-convidar">Convidar por e-mail</button>
+        </details>
+        <div id="i-msg" class="msg"></div>
+        <div id="p-caixa" class="senha-caixa" hidden>
+          <div class="pequeno" id="p-titulo"></div>
+          <div class="linha" style="margin-top:8px">
+            <div class="campo"><input id="p-senha" readonly aria-label="Senha provisória"></div>
+            <button type="button" id="p-copiar" class="primario">Copiar</button>
+            <button type="button" id="p-fechar">Já entreguei — esconder</button>
+          </div>
+          <p class="aviso">Esta senha aparece só agora. Entregue-a por um canal seguro (pessoalmente, ligação ou mensagem temporária) — nunca junto com o e-mail de login na mesma mensagem. No 1º login o app pede para criar uma senha nova.</p>
+          <div id="p-msg-senha" class="msg"></div>
+        </div>
+      </div>
+      <div class="cartao">
+        <div class="tabela-rolagem">
+          <table>
+            <thead><tr><th>Pessoa</th><th>Situação</th><th>Organização e papel</th><th>Último acesso</th><th>Licença até</th><th>Termo</th><th></th></tr></thead>
+            <tbody id="t-corpo"><tr><td colspan="7" class="nada">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+        <div id="t-msg" class="msg"></div>
+      </div>
+    </section>
+
+    <!-- ══ Licenças: plano e teste por organização (F8, F031-A Convidada), computadores com licença (S1), versão mínima (Operação) -->
+    <section class="aba" id="aba-licencas" role="tabpanel" hidden>
+      <div class="cabeca">
+        <h2>Licenças</h2>
+        <div class="linha compacta"><button id="lc-atualizar" class="mini" type="button">Atualizar</button></div>
+        <p class="pequeno suave">A licença do app é emitida por computador e renovada sozinha (a cada abertura e a cada 6 h); o que você muda aqui vale na próxima renovação. Bloquear uma pessoa ou um computador para o app quando a licença atual vencer (até “dias offline”, em Operação).</p>
+      </div>
+      <div class="cartao">
+        <div class="cabeca"><h3>Plano e teste por organização</h3><span class="pequeno suave" id="lc-versao"></span></div>
+        <div class="tabela-rolagem">
+          <table>
+            <thead><tr><th>Organização</th><th>Plano</th><th>Teste grátis até</th><th>Situação</th><th>Assentos</th></tr></thead>
+            <tbody id="lc-corpo"><tr><td colspan="5" class="nada">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+        <div id="lc-msg" class="msg"></div>
+      </div>
+      <div class="cartao">
+        <div class="cabeca"><h3>Computadores com licença</h3>
+          <div class="linha compacta"><select id="m-org" class="mini" aria-label="filtrar por organização"><option value="">todas as organizações</option><option value="-">sem organização</option></select><select id="m-situacao" class="mini" aria-label="filtrar por situação"><option value="">todas</option><option value="vencida">licença vencida</option><option value="bloqueada">bloqueados</option><option value="beta">canal beta</option></select></div>
+        </div>
+        <div class="tabela-rolagem">
+          <table>
+            <thead><tr><th>Pessoa</th><th>Computador</th><th>App</th><th>Visto</th><th>Licença até</th><th>Situação</th><th></th></tr></thead>
+            <tbody id="m-corpo"><tr><td colspan="7" class="nada">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+        <div id="m-msg" class="msg"></div>
+      </div>
+    </section>
+
+    <!-- ══ Destaque: catálogos de fabricante (U3) e vitrine (F2, D32/D60/D68: Destaque só para organização Pro) -->
+    <section class="aba" id="aba-destaque" role="tabpanel" hidden>
+      <div class="cabeca">
+        <h2>Destaque e catálogos</h2>
+        <div class="linha compacta"><button id="vt-atualizar" class="mini" type="button">Atualizar</button></div>
+        <p class="pequeno suave">Catálogo público e Destaque só para organização no plano Pro (D68). “Em destaque” é a seção do topo da Biblioteca, por mês; sem destaque vigente, a seção some. Vale na próxima sincronização do app.</p>
+      </div>
+      <div class="cartao" id="cf-cartao" hidden>
+        <div class="cabeca"><h3>Catálogos de fabricante (público · da organização)</h3><button id="cf-atualizar" class="mini" type="button">Atualizar</button></div>
+        <p class="pequeno suave">Cada catálogo publicado pela Oficina de Blocos › ☁ fabricante… aparece aqui, <b>privado e sem dona</b> até a equipe decidir. <b>Público</b>: toda conta ativa recebe (a organização escolhe quais no perfil, “Catálogos públicos visíveis”). <b>Privado com dona</b>: só os membros daquela organização (com “catálogo próprio” ligado no perfil). O instalador leva os públicos do dia do build.</p>
+        <ul class="org-lista" id="cf-lista"><li class="suave pequeno">Carregando…</li></ul>
+        <div id="cf-msg" class="msg"></div>
+      </div>
+      <div class="cartao" id="vt-cartao" hidden>
+        <div class="cabeca"><h3>Destaques da Biblioteca</h3></div>
+        <form id="vt-form" class="linha">
+          <input type="hidden" id="vt-id">
+          <div class="campo" style="flex:0 1 240px"><label for="vt-fab">Fornecedor (catálogo público)</label><select id="vt-fab" required></select></div>
+          <div class="campo" style="flex:0 1 150px"><label for="vt-inicio">Início</label><input id="vt-inicio" type="date" required></div>
+          <div class="campo" style="flex:0 1 150px"><label for="vt-fim">Fim</label><input id="vt-fim" type="date" required></div>
+          <div class="campo" style="flex:0 1 90px"><label for="vt-ordem">Ordem</label><input id="vt-ordem" type="number" min="-1000" max="1000" step="1" value="0"></div>
+          <select id="vt-rotulo" hidden aria-hidden="true"><option value="destaque">Em destaque</option></select>
+          <button class="primario" type="submit" id="vt-salvar">Criar destaque</button>
+          <button type="button" id="vt-novo" hidden>Novo</button>
+        </form>
+        <p class="pequeno suave" style="margin:6px 0 0">Início e fim inclusive. Encerrar não apaga (fica no histórico). O rótulo é sempre “Em destaque” (D60: “Patrocinado” saiu da interface).</p>
+        <ul class="org-lista" id="vt-lista"><li class="suave pequeno">Carregando…</li></ul>
+        <h3 style="margin:16px 0 4px">Ordem “Recomendado”</h3>
+        <p class="pequeno suave">Um id por linha, na ordem desejada. <b>Blocos</b>: ids de bloco (valem dentro de cada seção da Biblioteca; o que não estiver aqui vem depois, em ordem alfabética; a lista é lida por todas as contas — não ponha ids de blocos de catálogo privado). <b>Fornecedores</b>: ids de catálogo público (ordem dos cartões em Fornecedores). Lista vazia = ordem alfabética.</p>
         <div class="linha">
-          <div class="campo"><label for="o-nome">Nome da empresa</label><input id="o-nome" maxlength="120" required placeholder="Empresa Exemplo"></div>
-          <div class="campo"><label for="o-logo">Logo (PNG ou SVG, até 256 KB)</label><input id="o-logo" type="file" accept=".png,.svg,image/png,image/svg+xml"></div>
-          <div class="campo" style="flex:0 1 150px"><label for="o-cor">Cor de destaque</label><div class="linha" style="gap:6px;flex-wrap:nowrap"><input id="o-cor" type="color" value="#0e8f7e"><label class="pequeno" style="margin:0"><input type="checkbox" id="o-sem-cor" style="width:auto"> sem cor</label></div></div>
+          <div class="campo"><label for="vt-ord-blocos">Blocos</label><textarea id="vt-ord-blocos" rows="6" spellcheck="false" placeholder="ESTMOD&#10;ESTMODC&#10;MESA"></textarea></div>
+          <div class="campo"><label for="vt-ord-fab">Fornecedores</label><textarea id="vt-ord-fab" rows="6" spellcheck="false" placeholder="id-do-catalogo"></textarea></div>
         </div>
-        <!-- F8 (D40): plano e teste grátis são da ORGANIZAÇÃO — valem para todos os membros -->
-        <div class="linha" id="o-plano-linha" style="margin-top:10px" hidden>
-          <div class="campo" style="flex:0 1 150px"><label for="o-plano">Plano</label><select id="o-plano"><option value="oem">OEM</option><option value="cliente">Cliente</option></select></div>
-          <div class="campo" style="flex:0 1 190px"><label for="o-teste">Teste grátis até (vazio = sem teste)</label><input id="o-teste" type="date"></div>
-          <p class="pequeno suave" style="margin:0;flex:1 1 260px;align-self:flex-end">Todos os membros recebem o plano da organização (o papel de cada um filtra). Teste vencido: todos só olham, com o aviso “Seu teste terminou”.</p>
-        </div>
-        <div class="campo" style="margin-top:10px"><label for="o-sobre">Texto do “Sobre” (até 2000 caracteres)</label><textarea id="o-sobre" rows="3" maxlength="2000"></textarea></div>
-        <div class="campo"><label>Prévia</label><div class="org-previa" id="o-previa"><img id="o-previa-logo" alt="" hidden><span class="org-nome" id="o-previa-nome">—</span><button type="button" class="mini" id="o-tirar-logo" hidden>tirar logo</button></div></div>
-        <div class="linha"><button class="primario" type="submit" id="o-salvar">Criar organização</button><button type="button" id="o-novo" hidden>Cancelar edição</button></div>
-      </form>
-      <div id="o-msg" class="msg"></div>
-      <ul class="org-lista" id="o-lista"></ul>
-    </div>
+        <div class="linha" style="margin-top:6px"><button id="vt-ord-salvar" type="button">Salvar ordem</button></div>
+        <div id="vt-msg" class="msg"></div>
+      </div>
+      <p class="nada" id="dt-indisponivel" hidden>Catálogos e destaques indisponíveis neste servidor (banco sem as migrações U3/F2).</p>
+    </section>
 
-    <!-- U1 · perfil da organização (0.3.0): nível, co-marca, tema curado, catálogos visíveis, canal — docs/U1-CONTRATO-PERFIL.md -->
-    <div class="cartao" id="p-cartao" hidden>
-      <h2>Perfil da organização (nível, tema, catálogos, canal)</h2>
-      <p class="pequeno suave">Define como o app “se veste” para quem está vinculado à organização: Padrão (cara StudioRP), Parceiro (organização em destaque, StudioRP discreto) ou Grupo (tema próprio travado e co-marca “… by StudioRP”). Só a equipe ajusta, uma vez; vale na próxima renovação da licença do app (e offline depois disso).</p>
-      <form id="p-form">
-        <div class="linha">
-          <div class="campo"><label for="p-org">Organização</label><select id="p-org"></select></div>
-          <div class="campo" style="flex:0 1 160px"><label for="p-nivel">Nível</label><select id="p-nivel"></select></div>
-          <div class="campo" style="flex:0 1 140px"><label for="p-canal">Canal de atualização</label><select id="p-canal"></select></div>
+    <!-- ══ Pedidos de bloco (A2): fila da equipe — docs/A-FASE-A-ORGANIZACAO.md -->
+    <section class="aba" id="aba-pedidos" role="tabpanel" hidden>
+      <div class="cabeca">
+        <h2>Pedidos de bloco</h2>
+        <div class="linha compacta">
+          <select id="pd-status" class="mini" aria-label="filtrar por status"><option value="">todos os status</option></select>
+          <select id="pd-tipo" class="mini" aria-label="filtrar por tipo"><option value="">todos os tipos</option></select>
+          <button id="pd-atualizar" class="mini" type="button">Atualizar</button>
         </div>
-        <p class="p-regra" id="p-regra"></p>
-        <div class="linha">
-          <div class="campo"><label for="p-tema">Tema (só no nível Grupo; fica travado)</label><select id="p-tema"></select></div>
-          <div class="campo"><label for="p-comarca">Co-marca (vazio = a padrão do nível)</label><input id="p-comarca" maxlength="80" placeholder="Empresa Studio · by StudioRP"></div>
-          <div class="campo" style="flex:0 1 150px"><label for="p-comarca-pos">Onde</label><select id="p-comarca-pos"><option value="barra">na barra</option><option value="sobre">no “Sobre”</option></select></div>
+        <p class="pequeno suave">O usuário autorizou a equipe a ver o pedido e os anexos para atender. Status e resposta aparecem no app dele em “Meus pedidos”. Equipamento de fabricante só entra a partir do próprio fabricante.</p>
+      </div>
+      <div class="cartao" id="pd-cartao">
+        <ul class="ped-lista" id="pd-lista"><li class="suave pequeno">Carregando…</li></ul>
+        <div id="pd-msg" class="msg"></div>
+      </div>
+    </section>
+
+    <!-- ══ Operação: regras da licença (dias offline, máquinas, versão mínima, link de instalar), conexão e resumo -->
+    <section class="aba" id="aba-operacao" role="tabpanel" hidden>
+      <div class="cabeca"><h2>Operação</h2><p class="pequeno suave">Regras globais da licença e estado desta sessão. Bloqueios e mudanças valem na próxima renovação: o app para quando a licença atual vencer (até “dias offline”).</p></div>
+      <div class="duas">
+        <div class="cartao">
+          <h3>Regras da licença</h3>
+          <div class="linha">
+            <div class="campo" style="flex:0 1 160px"><label for="g-dias">Dias offline (validade)</label><input id="g-dias" type="number" min="1" max="90"></div>
+            <div class="campo" style="flex:0 1 160px"><label for="g-max">Máx. computadores/pessoa</label><input id="g-max" type="number" min="1" max="50"></div>
+            <div class="campo" style="flex:0 1 160px"><label for="g-min">Versão mínima do app</label><input id="g-min" placeholder="0.0.0" pattern="\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?"></div>
+          </div>
+          <div class="campo" style="margin-top:10px"><label for="g-link">Link para instalar o StudioRP (vai no aviso de versão antiga; vazio = sem link)</label><input id="g-link" type="url" maxlength="500" placeholder="https://…"></div>
+          <div class="linha"><button id="g-salvar" type="button" class="primario">Salvar regras</button></div>
+          <div id="g-msg" class="msg"></div>
         </div>
-        <div class="linha" style="margin-top:10px">
-          <div class="campo"><label for="p-publicos">Catálogos públicos visíveis</label>
-            <label class="pequeno" style="margin:0 0 4px"><input type="checkbox" id="p-todos" style="width:auto"> todos os públicos</label>
-            <input id="p-publicos" placeholder="ids separados por vírgula (ex.: cat-fabricante-1, cat-fabricante-2)"></div>
-          <div class="campo" style="flex:0 1 220px"><label>&nbsp;</label><label class="pequeno" style="margin:0"><input type="checkbox" id="p-proprio" style="width:auto"> catálogo próprio da organização (“Meus blocos”, qualquer nível)</label></div>
-        </div>
-        <div class="linha" style="margin-top:10px"><button class="primario" type="submit" id="p-salvar">Salvar perfil</button></div>
-      </form>
-      <!-- F6a (D38) · assentos de Gestor do plano: papel ≠ plano; o gestor da organização não promove além disso ("fale com a equipe") -->
-      <div class="linha" id="p-assentos-linha" style="margin-top:12px" hidden>
-        <div class="campo" style="flex:0 1 200px"><label for="p-assentos">Assentos de Gestor (plano)</label><input id="p-assentos" type="number" min="1" max="50" step="1"></div>
-        <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><button type="button" id="p-assentos-salvar">Salvar assentos</button></div>
-        <p class="pequeno suave" id="p-assentos-uso" style="margin:0;align-self:flex-end"></p>
-      </div>
-      <!-- F8 (D40 a–b) · assentos do plano: pagos (gestor, comercial, engenharia) e de Leitura (não pagos); a equipe amplia -->
-      <div class="linha" id="p-f8-assentos" style="margin-top:12px" hidden>
-        <div class="campo" style="flex:0 1 170px"><label for="p-pagos">Assentos pagos</label><input id="p-pagos" type="number" min="1" max="500" step="1"></div>
-        <div class="campo" style="flex:0 1 170px"><label for="p-leitura">Assentos de Leitura</label><input id="p-leitura" type="number" min="0" max="500" step="1"></div>
-        <div class="campo" style="flex:0 1 220px"><label>&nbsp;</label><label class="pequeno" style="margin:0"><input type="checkbox" id="p-leitura-conta" style="width:auto"> Leitura ocupa assento pago</label></div>
-        <div class="campo" style="flex:0 1 auto"><label>&nbsp;</label><button type="button" id="p-f8-salvar">Salvar assentos do plano</button></div>
-        <p class="pequeno suave" id="p-f8-uso" style="margin:0;align-self:flex-end"></p>
-      </div>
-      <div id="p-msg" class="msg"></div>
-    </div>
-
-    <!-- U3 · catálogos de fabricante (0.3.0): marca PÚBLICO e organização dona — docs/retomada/U3-CATALOGO-PUBLICO.md -->
-    <div class="cartao" id="cf-cartao" hidden>
-      <div class="linha" style="justify-content:space-between">
-        <h2 style="margin:0">Catálogos de fabricante (público · da organização)</h2>
-        <button id="cf-atualizar">Atualizar</button>
-      </div>
-      <p class="pequeno suave">Cada catálogo publicado pela Oficina de Blocos › ☁ fabricante… aparece aqui, <b>privado e sem dona</b> até a equipe decidir. <b>Público</b>: toda conta ativa recebe (a organização escolhe quais no perfil, “Catálogos públicos visíveis”). <b>Privado com dona</b>: só os membros daquela organização (com “catálogo próprio” ligado no perfil). Vale na próxima sincronização do app; o instalador leva os públicos do dia do build.</p>
-      <ul class="org-lista" id="cf-lista"><li class="suave pequeno">Carregando…</li></ul>
-      <div id="cf-msg" class="msg"></div>
-    </div>
-
-    <!-- F2 · vitrine do catálogo (0.3.0, D32): destaques de fornecedor e ordem "Recomendado" da Biblioteca — docs/retomada/F2-BIBLIOTECA-SECOES.md -->
-    <div class="cartao" id="vt-cartao" hidden>
-      <div class="linha" style="justify-content:space-between">
-        <h2 style="margin:0">Destaques · vitrine do catálogo</h2>
-        <button id="vt-atualizar">Atualizar</button>
-      </div>
-      <p class="pequeno suave">A seção <b>Em destaque</b> da Biblioteca mostra os fornecedores vigentes hoje (início e fim inclusive), na ordem escolhida. <b>Em destaque</b> = escolha editorial; <b>Patrocinado</b> só com relação comercial. Só catálogos <b>públicos</b> (cartão acima). Sem destaque vigente, a seção some. Vale na próxima sincronização do app; o instalador leva os vigentes e agendados do dia do build. Encerrar não apaga (fica no histórico).</p>
-      <form id="vt-form" class="linha">
-        <input type="hidden" id="vt-id">
-        <div class="campo" style="flex:0 1 200px"><label for="vt-fab">Fornecedor</label><select id="vt-fab" required></select></div>
-        <div class="campo" style="flex:0 1 150px"><label for="vt-rotulo">Rótulo</label><select id="vt-rotulo"><option value="destaque">Em destaque</option><option value="patrocinado">Patrocinado</option></select></div>
-        <div class="campo" style="flex:0 1 150px"><label for="vt-inicio">Início</label><input id="vt-inicio" type="date" required></div>
-        <div class="campo" style="flex:0 1 150px"><label for="vt-fim">Fim</label><input id="vt-fim" type="date" required></div>
-        <div class="campo" style="flex:0 1 90px"><label for="vt-ordem">Ordem</label><input id="vt-ordem" type="number" min="-1000" max="1000" step="1" value="0"></div>
-        <button class="primario" type="submit" id="vt-salvar">Criar destaque</button>
-        <button type="button" id="vt-novo" hidden>Novo</button>
-      </form>
-      <ul class="org-lista" id="vt-lista"><li class="suave pequeno">Carregando…</li></ul>
-      <h3 style="margin:16px 0 4px">Ordem “Recomendado”</h3>
-      <p class="pequeno suave">Um id por linha, na ordem desejada. <b>Blocos</b>: ids de bloco (valem dentro de cada seção da Biblioteca; o que não estiver aqui vem depois, em ordem alfabética; a lista é lida por todas as contas — não ponha ids de blocos de catálogo privado). <b>Fornecedores</b>: ids de catálogo público (ordem dos cartões em Fornecedores). Lista vazia = ordem alfabética.</p>
-      <div class="linha">
-        <div class="campo"><label for="vt-ord-blocos">Blocos</label><textarea id="vt-ord-blocos" rows="6" spellcheck="false" placeholder="ESTMOD&#10;ESTMODC&#10;MESA"></textarea></div>
-        <div class="campo"><label for="vt-ord-fab">Fornecedores</label><textarea id="vt-ord-fab" rows="6" spellcheck="false" placeholder="id-do-catalogo"></textarea></div>
-      </div>
-      <div class="linha" style="margin-top:6px"><button id="vt-ord-salvar">Salvar ordem</button></div>
-      <div id="vt-msg" class="msg"></div>
-    </div>
-
-    <!-- A2 · "Solicitar bloco": fila da equipe (pedidos de bloco genérico/estilo/fabricante) — docs/A-FASE-A-ORGANIZACAO.md -->
-    <div class="cartao" id="pd-cartao">
-      <div class="linha" style="justify-content:space-between">
-        <h2 style="margin:0">Pedidos de bloco (Solicitar bloco)</h2>
-        <div class="linha">
-          <select id="pd-status" style="width:auto" aria-label="filtrar por status"><option value="">todos os status</option></select>
-          <select id="pd-tipo" style="width:auto" aria-label="filtrar por tipo"><option value="">todos os tipos</option></select>
-          <button id="pd-atualizar">Atualizar</button>
+        <div class="cartao">
+          <h3>Sessão e conexão</h3>
+          <div class="resumo" id="op-resumo"></div>
+          <p class="pequeno suave" style="margin:12px 0 0" id="op-conexao"></p>
+          <p class="pequeno" style="margin:8px 0 0"><button type="button" class="link" id="op-trocar">Trocar projeto Supabase</button> · <button type="button" class="link" id="op-recarregar">Recarregar tudo</button></p>
         </div>
       </div>
-      <p class="pequeno suave">O usuário autorizou a equipe a ver o pedido e os anexos para atender. Status e resposta aparecem no app dele em “Meus pedidos”. Equipamento de fabricante só entra a partir do próprio fabricante.</p>
-      <ul class="ped-lista" id="pd-lista"><li class="suave pequeno">Carregando…</li></ul>
-      <div id="pd-msg" class="msg"></div>
-    </div>
-
-    <div class="cartao">
-      <h2>Regras</h2>
-      <div class="linha">
-        <div class="campo" style="flex:0 1 180px"><label for="g-dias">Dias offline (validade)</label><input id="g-dias" type="number" min="1" max="90"></div>
-        <div class="campo" style="flex:0 1 180px"><label for="g-max">Máx. computadores/usuário</label><input id="g-max" type="number" min="1" max="50"></div>
-        <div class="campo" style="flex:0 1 180px"><label for="g-min">Versão mínima do app</label><input id="g-min" placeholder="0.0.0"></div>
-        <div class="campo"><label for="g-link">Link para instalar o StudioRP (vai no aviso de versão antiga; vazio = sem link)</label><input id="g-link" type="url" maxlength="500" placeholder="https://…"></div>
-        <button id="g-salvar">Salvar regras</button>
-      </div>
-      <p class="pequeno suave">Bloqueios e mudanças valem na próxima renovação: o app para quando a licença atual vencer (até “dias offline”).</p>
-      <div id="g-msg" class="msg"></div>
-    </div>
-
-    <div class="cartao">
-      <div class="linha" style="justify-content:space-between;margin-bottom:10px">
-        <h2 style="margin:0">Usuários por organização</h2>
-        <div class="linha">
-          <input id="f-busca" placeholder="Buscar nome, e-mail ou organização" style="width:240px">
-          <select id="f-org" style="width:auto" aria-label="filtrar por organização"><option value="">todas as organizações</option><option value="-">sem organização</option></select>
-          <select id="f-ordem" style="width:auto" aria-label="ordem"><option value="recente">mais recentes primeiro</option><option value="az">A–Z</option></select>
-          <button id="f-atualizar">Atualizar</button>
-        </div>
-      </div>
-      <p class="pequeno suave" style="margin-top:0">Cada organização mostra o plano, o teste grátis e os assentos de Gestor; mudar vale para todos os membros na próxima renovação da licença. Sem organização = só olhar.</p>
-      <div class="tabela-rolagem">
-        <table>
-          <thead><tr><th>Usuário</th><th>Situação</th><th>Edições</th><th>Último login</th><th>Licença até</th><th>Termo</th><th></th></tr></thead>
-          <tbody id="t-corpo"><tr><td colspan="7" class="suave">Carregando…</td></tr></tbody>
-        </table>
-      </div>
-      <div id="t-msg" class="msg"></div>
-    </div>
+    </section>
   </section>
 </main>
 
-<!-- F8: caixa de confirmação própria (no lugar de confirm) -->
-<dialog id="cx"><p id="cx-texto" style="margin-top:0"></p><div class="linha" style="justify-content:flex-end"><button type="button" id="cx-nao">Cancelar</button><button type="button" id="cx-ok" class="primario">Confirmar</button></div></dialog>
+<!-- caixa de confirmação própria (no lugar dos diálogos nativos): texto, campo opcional (nome, e-mail de confirmação), Cancelar/Confirmar -->
+<dialog id="cx"><p id="cx-texto"></p><input id="cx-campo" hidden autocomplete="off" spellcheck="false"><div class="linha" style="justify-content:flex-end"><button type="button" id="cx-nao">Cancelar</button><button type="button" id="cx-ok" class="primario">Confirmar</button></div></dialog>
 
 <script>
 'use strict';
@@ -338,12 +516,56 @@ const data = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
 function guarda(k, v) { try { localStorage.setItem(k, v); } catch {} }
 function le(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } }
 function avisa(id, texto, tipo = 'erro') { const el = $(id); el.textContent = texto; el.className = 'msg ' + (texto ? tipo : ''); }
-function mostra(v) { for (const id of ['v-conexao', 'v-senha', 'v-login', 'v-painel']) $(id).hidden = id !== v; }
+function mostra(v) { for (const id of ['v-conexao', 'v-senha', 'v-login', 'v-painel']) $(id).hidden = id !== v; $('abas').hidden = v !== 'v-painel'; $('topo-busca').hidden = v !== 'v-painel'; }
+/** mensagem de erro que diz o que fazer (códigos e falhas conhecidas da função admin e da rede) */
+function explica(e) {
+  const m = (e && e.message) || String(e);
+  if (e && e.codigo === 'nao_admin') return 'Esta conta não é administradora. Para usar o Studio, entre pelo aplicativo.';
+  if (/Sessão expirada/.test(m)) return m + ' Clique em Sair e entre de novo.';
+  if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'Sem resposta do servidor: confira a internet e tente de novo em instantes.';
+  if (/Falha HTTP 5\d\d/.test(m)) return m + ' — o servidor falhou; tente de novo e, se repetir, veja o log da função admin no Supabase.';
+  if (/Falha HTTP 40[13]/.test(m)) return m + ' — sessão vencida ou sem permissão: saia e entre de novo.';
+  if (/plano/i.test(m) && /inv[aá]lid|aceit|desconhec/i.test(m)) return m + ' O servidor pode estar na versão anterior dos planos (OEM · Cliente): escolha a opção antiga equivalente ou peça a atualização da função admin.';
+  return m;
+}
 
-let sb = null, url = '', anon = '', dados = null;
+let sb = null, url = '', anon = '', dados = null, carregadoEm = null;
 const hashInicial = new URLSearchParams(location.hash.slice(1));
 const veioDeLink = ['invite', 'recovery'].includes(hashInicial.get('type'));
 const hospedado = /^https?:$/.test(location.protocol);
+
+// ───── tema (claro · escuro · automático) — escolha guardada só neste navegador; sem escolha, segue o sistema
+const TEMAS = ['auto', 'claro', 'escuro'];
+const NOME_TEMA = { auto: 'automático', claro: 'claro', escuro: 'escuro' };
+function aplicaTema(t) {
+  if (!TEMAS.includes(t)) t = 'auto';
+  if (t === 'auto') delete document.documentElement.dataset.tema; else document.documentElement.dataset.tema = t;
+  $('tema').textContent = 'Tema: ' + NOME_TEMA[t];
+  guarda('painel.tema', t);
+}
+$('tema').onclick = () => aplicaTema(TEMAS[(TEMAS.indexOf(le('painel.tema') || 'auto') + 1) % TEMAS.length]);
+aplicaTema(le('painel.tema') || 'auto');
+
+// ───── abas (a aberta fica guardada só neste navegador; links internos `data-ir` mudam de aba)
+const ABAS = ['organizacoes', 'pessoas', 'licencas', 'destaque', 'pedidos', 'operacao'];
+function abre(aba) {
+  if (!ABAS.includes(aba)) aba = 'organizacoes';
+  for (const a of ABAS) {
+    $('aba-' + a).hidden = a !== aba;
+    const b = document.querySelector(`#abas [data-aba="${a}"]`);
+    b.setAttribute('aria-selected', a === aba ? 'true' : 'false'); b.tabIndex = a === aba ? 0 : -1;
+  }
+  guarda('painel.aba', aba);
+}
+const abaAtual = () => ABAS.find((a) => !$('aba-' + a).hidden) || 'organizacoes';
+$('abas').onclick = (e) => { const b = e.target.closest('[data-aba]'); if (b) abre(b.dataset.aba); };
+$('abas').onkeydown = (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const i = ABAS.indexOf(abaAtual()), n = (i + (e.key === 'ArrowRight' ? 1 : ABAS.length - 1)) % ABAS.length;
+  abre(ABAS[n]); document.querySelector(`#abas [data-aba="${ABAS[n]}"]`).focus(); e.preventDefault();
+};
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-ir]'); if (b) { e.preventDefault(); abre(b.dataset.ir); window.scrollTo({ top: 0 }); } });
+function conta(id, n) { $(id).textContent = n > 0 ? String(n) : ''; }
 
 function conecta() {
   url = (CONFIG.supabaseUrl || le('s1.url')).replace(/\/+$/, '');
@@ -369,10 +591,13 @@ async function chamaAdmin(corpo) {
 // ───── conexão
 $('c-salvar').onclick = () => {
   const u = $('c-url').value.trim(), a = $('c-anon').value.trim();
-  if (!/^https:\/\/.+/.test(u) || a.length < 20) return avisa('c-msg', 'Confira a URL (https://…) e a chave.');
+  if (!/^https:\/\/.+/.test(u) || a.length < 20) return avisa('c-msg', 'Confira a URL (https://…) e a chave: copie as duas de Project Settings › API.');
   guarda('s1.url', u); guarda('s1.anon', a); inicia();
 };
-$('l-trocar').onclick = (e) => { e.preventDefault(); guarda('s1.url', ''); guarda('s1.anon', ''); CONFIG.supabaseUrl = CONFIG.supabaseAnonKey = ''; conecta(); };
+const trocaProjeto = (e) => { if (e) e.preventDefault(); guarda('s1.url', ''); guarda('s1.anon', ''); CONFIG.supabaseUrl = CONFIG.supabaseAnonKey = ''; conecta(); };
+$('l-trocar').onclick = trocaProjeto;
+$('op-trocar').onclick = trocaProjeto;
+$('op-recarregar').onclick = () => carrega();
 
 // ───── senha (convite / recuperação / senha provisória do próprio admin)
 let senhaObrigatoria = false;
@@ -387,7 +612,7 @@ async function telaSenha(provisoria = false) {
 $('s-salvar').onclick = async () => {
   const a = $('s-1').value, b = $('s-2').value;
   if (a.length < 10) return avisa('s-msg', 'A senha precisa de pelo menos 10 caracteres.');
-  if (a !== b) return avisa('s-msg', 'As senhas não conferem.');
+  if (a !== b) return avisa('s-msg', 'As senhas não conferem: digite a mesma senha nos dois campos.');
   $('s-salvar').disabled = true;
   const { error } = await sb.auth.updateUser({ password: a, data: { trocarSenha: false } });
   $('s-salvar').disabled = false;
@@ -404,7 +629,7 @@ $('l-form').onsubmit = async (e) => {
   e.preventDefault();
   avisa('l-msg', '');
   const { error } = await sb.auth.signInWithPassword({ email: $('l-email').value.trim(), password: $('l-senha').value });
-  if (error) return avisa('l-msg', error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message);
+  if (error) return avisa('l-msg', error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos. Confira os dois ou use “Esqueci a senha”.' : explica(error));
   $('l-senha').value = '';
   entrouOuNao();
 };
@@ -412,7 +637,7 @@ $('l-esqueci').onclick = async () => {
   const email = $('l-email').value.trim();
   if (!email) return avisa('l-msg', 'Digite seu e-mail acima primeiro.');
   const { error } = await sb.auth.resetPasswordForEmail(email, hospedado ? { redirectTo: location.origin + location.pathname } : {});
-  avisa('l-msg', error ? error.message : 'Se o e-mail estiver cadastrado, chegará um link para criar nova senha.', error ? 'erro' : 'ok');
+  avisa('l-msg', error ? explica(error) : 'Se o e-mail estiver cadastrado, chegará um link para criar nova senha.', error ? 'erro' : 'ok');
 };
 $('sair').onclick = async () => { await sb.auth.signOut(); entrouOuNao(); };
 
@@ -420,34 +645,44 @@ async function entrouOuNao() {
   const { data: { session } } = await sb.auth.getSession();
   $('sair').hidden = !session;
   $('quem').textContent = session ? session.user.email : '';
+  $('sessao-estado').textContent = '';
   if (!session) return mostra('v-login');
   if (session.user.user_metadata && session.user.user_metadata.trocarSenha === true) return telaSenha(true);
   try {
     await chamaAdmin({ acao: 'quem_sou' });
   } catch (e) {
     mostra('v-login');
-    return avisa('l-msg', e.codigo === 'nao_admin' ? 'Esta conta não é administradora. Para usar o Studio, entre pelo aplicativo.' : e.message);
+    return avisa('l-msg', explica(e));
   }
+  $('sessao-estado').textContent = 'administrador';
+  $('sessao-estado').className = 'estado ok';
   mostra('v-painel');
-  $('i-edicao').value = 'studiorp';   // U1: edição única da 0.3.0 por padrão (as antigas continuam na lista)
+  abre(le('painel.aba') || 'organizacoes');
   carrega();
 }
 
-// ───── painel
+// ───── carga: uma chamada `listar` alimenta Organizações, Pessoas, Licenças e Operação; Destaque e Pedidos têm as suas
 async function carrega() {
-  avisa('t-msg', '');
-  try { dados = await chamaAdmin({ acao: 'listar' }); } catch (e) { return avisa('t-msg', e.message); }
+  avisa('t-msg', ''); avisa('og-msg', ''); avisa('lc-msg', '');
+  try { dados = await chamaAdmin({ acao: 'listar' }); } catch (e) { const m = explica(e); avisa('t-msg', m); avisa('og-msg', m); avisa('lc-msg', m); return; }
+  carregadoEm = new Date();
+  sincronizaPlanos();   // F031-D
   const c = dados.configEfetiva;
   $('g-dias').value = c.diasOffline; $('g-max').value = c.maxMaquinas; $('g-min').value = c.minVersao;
   $('g-link').value = linkInstalarAtual();   // U1
-  desenhaOrgs();
   preencheNovo(); preencheFiltros();   // F8
+  desenhaOrgs();
   desenhaPerfis();   // U1: perfil da organização (depois da lista de organizações: põe o selo do nível nela)
   desenha();
+  desenhaLicencas();   // F031-E: plano/teste por organização e computadores
+  desenhaOperacao();
   carregaPedidos();
   carregaCatalogos();   // U3
   carregaVitrine();   // F2
 }
+/** termo da busca global (topo): vale em todas as abas */
+const termoBusca = () => $('f-busca').value.trim().toLowerCase();
+const casaTexto = (...partes) => { const b = termoBusca(); return !b || partes.join(' ').toLowerCase().includes(b); };
 
 // ───── A2 · pedidos de bloco. Mesmos nomes de servidor/supabase/functions/_compartilhado/pedidos-bloco.ts (teste confere).
 const STATUS_PEDIDO = { recebido: 'Recebido', em_analise: 'Em análise', aceito: 'Aceito', em_producao: 'Em produção', publicado: 'Publicado no catálogo', recusado: 'Não atendido' };
@@ -461,25 +696,28 @@ async function carregaPedidos() {
     const r = await chamaAdmin({ acao: 'listar_pedidos', status: $('pd-status').value || null, tipo: $('pd-tipo').value || null });
     $('pd-cartao').hidden = r.pedidosDisponivel === false;
     pedidos = r.pedidos || [];
-  } catch (e) { pedidos = []; avisa('pd-msg', e.message); }
+    if (r.pedidosDisponivel === false) avisa('pd-msg', 'Pedidos indisponíveis neste servidor (banco sem a migração A2).', 'aviso');
+  } catch (e) { pedidos = []; avisa('pd-msg', explica(e)); }
   desenhaPedidos();
 }
 function desenhaPedidos() {
   const quem = (id) => { const u = dados && dados.usuarios.find((x) => x.id === id); return u ? (u.nome ? u.nome + ' · ' : '') + u.email : id; };
   const org = (id) => { const o = dados && (dados.organizacoes || []).find((x) => x.id === id); return o ? o.nome : ''; };
-  $('pd-lista').innerHTML = pedidos.length ? pedidos.map((p) => `<li>
+  const lista = pedidos.filter((p) => casaTexto(p.nome, p.descricao, quem(p.autor), org(p.organizacao)));
+  conta('n-pedidos', pedidos.filter((p) => !['publicado', 'recusado'].includes(p.status)).length);
+  $('pd-lista').innerHTML = lista.length ? lista.map((p) => `<li>
     <div class="cab"><span><strong>${esc(p.nome)}</strong> <span class="chip">${esc(TIPO_PEDIDO[p.tipo] || p.tipo)}</span>${p.tipo === 'fabricante' ? ' <span class="estado pend" title="só entra a partir do próprio fabricante">fabricante</span>' : ''}</span>
-      <span class="pequeno suave">${dataHora(p.criado_em)} · ${esc(quem(p.autor))}${org(p.organizacao) ? ' · ' + esc(org(p.organizacao)) : ''}${p.edicao ? ' · ' + esc(p.edicao) : ''}${p.versao_app ? ' ' + esc(p.versao_app) : ''}</span></div>
+      <span class="pequeno suave">${dataHora(p.criado_em)} · ${esc(quem(p.autor))}${org(p.organizacao) ? ' · ' + esc(org(p.organizacao)) : ''}${p.versao_app ? ' · app ' + esc(p.versao_app) : ''}</span></div>
     <div class="desc">${esc(p.descricao)}</div>
     ${p.medidas ? `<div class="pequeno"><span class="suave">medidas:</span> ${esc(p.medidas)}</div>` : ''}
     ${p.referencia ? `<div class="pequeno"><span class="suave">referência:</span> ${esc(p.referencia)}</div>` : ''}
-    ${(p.anexos || []).length ? `<div class="pequeno"><span class="suave">anexos:</span> ${p.anexos.map((a) => `<button class="mini" data-pd="anexo" data-id="${esc(p.id)}" data-arq="${esc(a.nome)}">${esc(a.nome)}</button>`).join(' ')}</div>` : ''}
+    ${(p.anexos || []).length ? `<div class="pequeno"><span class="suave">anexos:</span> ${p.anexos.map((a) => `<button class="mini" type="button" data-pd="anexo" data-id="${esc(p.id)}" data-arq="${esc(a.nome)}">${esc(a.nome)}</button>`).join(' ')}</div>` : ''}
     <div class="resp">
       <select data-pd="status" data-id="${esc(p.id)}" aria-label="status">${Object.entries(STATUS_PEDIDO).map(([k, v]) => `<option value="${k}"${p.status === k ? ' selected' : ''}>${v}</option>`).join('')}</select>
       <input data-pd="resposta" data-id="${esc(p.id)}" maxlength="2000" placeholder="resposta para o usuário (aparece em Meus pedidos)" value="${esc(p.resposta || '')}">
-      <button class="mini primario" data-pd="salvar" data-id="${esc(p.id)}">Salvar</button>
+      <button class="mini primario" type="button" data-pd="salvar" data-id="${esc(p.id)}">Salvar</button>
       ${p.status_em ? `<span class="pequeno suave">atualizado ${dataHora(p.status_em)}</span>` : ''}
-    </div></li>`).join('') : '<li class="suave pequeno">Nenhum pedido.</li>';
+    </div></li>`).join('') : `<li class="nada">${pedidos.length ? 'Nenhum pedido casa com a busca.' : 'Nenhum pedido.'}</li>`;
 }
 $('pd-atualizar').onclick = carregaPedidos;
 $('pd-status').onchange = carregaPedidos;
@@ -499,25 +737,87 @@ $('pd-lista').onclick = async (ev) => {
       avisa('pd-msg', 'Pedido atualizado.', 'ok');
       await carregaPedidos();
     }
-  } catch (e) { avisa('pd-msg', e.message); }
+  } catch (e) { avisa('pd-msg', explica(e)); }
   b.disabled = false;
 };
 
-// ───── N · organizações (personalização por cliente). O servidor revalida tudo (tipo, tamanho, SVG sem script).
+// ───── F031-E (D68/D71) · degraus do plano: View · Starter · Pro · Enterprise (+ Convidada como estado). Ids = valores do seletor; o
+// servidor (frente dos degraus) valida e grava. Os planos antigos que o servidor ainda devolver (oem/cliente) entram como "antigo".
+const PLANOS_PAINEL = [
+  { id: 'view', nome: 'View', assentos: 0, testeDias: 0, minimo: 0, nota: 'quem recebe um projeto: só o arquivo exportado (ver, medir, animação, lista), sem conta' },
+  { id: 'starter', nome: 'Starter', assentos: 1, testeDias: 30, minimo: 1, nota: 'uma pessoa: layout, simulação, importar e exportar, biblioteca; sem canal · teste 30 dias' },
+  { id: 'pro', nome: 'Pro', assentos: 3, testeDias: 45, minimo: 1, nota: 'organização: tudo + canal (pacote de cotação, propostas, revisões, aprovação), 3 assentos incluídos, Leitura sem limite · teste 45 dias, prorrogável uma vez' },
+  { id: 'enterprise', nome: 'Enterprise', assentos: 10, testeDias: 45, minimo: 10, nota: 'Pro com contrato, a partir de 10 assentos (gestor de conta, implantação à parte)' },
+  { id: 'convidada', nome: 'Convidada', assentos: 0, testeDias: 0, minimo: 0, nota: 'fornecedor que só responde convites: grátis, sem prazo, nada trava no escopo recebido' },
+];
+const PLANO_LEGADO = { oem: 'OEM (antigo → Pro)', cliente: 'Cliente (antigo → Pro)', gratis: 'só olhar' };
+const LEGADO_PRO = Object.keys(PLANO_LEGADO).filter((k) => k !== 'gratis');   // F031-D: os planos antigos leem como Pro até a migração
+const soOlhar = (degrau) => degrau === 'view' || degrau === 'gratis';   // F031-D: View (o legado `gratis` lê igual até a migração)
+const planoDe = (id) => PLANOS_PAINEL.find((p) => p.id === id) || null;
+const nomePlano = (id) => (planoDe(id) || {}).nome || PLANO_LEGADO[id] || (((dados && dados.planos) || []).find((x) => x.id === id) || { nome: id }).nome;
+const ehPro = (id) => id === 'pro' || id === 'enterprise' || LEGADO_PRO.includes(id);   // D68: catálogo público e Destaque só para organização Pro (antigos = Pro)
+const planoAlvoPro = () => 'pro';   // F031-D: o servidor fala os degraus novos ("Converter em plano Pro")
+/** F031-D: os padrões dos planos VÊM do servidor (`listar.planos`: nome, teste_dias, assentos_padrao, assentos_minimo); a lista local é o fallback */
+function sincronizaPlanos() {
+  for (const x of ((dados && dados.planos) || [])) {
+    const p = planoDe(x.id); if (!p) continue;
+    if (x.nome) p.nome = x.nome;
+    if (typeof x.teste_dias === 'number') p.testeDias = x.teste_dias;
+    if (typeof x.assentos_padrao === 'number') p.assentos = x.assentos_padrao;
+    if (typeof x.assentos_minimo === 'number') p.minimo = x.assentos_minimo;
+  }
+}
+/** opções do seletor de plano: os degraus novos + os antigos que o servidor ainda oferece (e o atual da organização, se for outro) */
+function opcoesPlano(atual) {
+  const servidor = ((dados && dados.planos) || []).map((p) => p.id);
+  const lista = PLANOS_PAINEL.map((p) => ({ id: p.id, nome: p.nome, antigo: false }));
+  for (const id of servidor) if (!planoDe(id)) lista.push({ id, nome: PLANO_LEGADO[id] || nomePlano(id), antigo: true });
+  if (atual && !lista.some((p) => p.id === atual)) lista.push({ id: atual, nome: PLANO_LEGADO[atual] || atual, antigo: true });
+  // View — não é plano: é o arquivo exportado / só olhar; fica na lista só para explicar (desabilitado)
+  return lista.map((p) => p.id === 'view' ? `<option value="view" disabled>View — não é plano (arquivo exportado · só olhar)</option>` : `<option value="${esc(p.id)}"${p.id === atual ? ' selected' : ''}>${esc(p.nome)}</option>`).join('');
+}
+const chipPlano = (id) => id ? `<span class="chip plano${planoDe(id) ? (id === 'convidada' ? ' convidada' : '') : ' antigo'}" title="${esc((planoDe(id) || {}).nota || (PLANO_LEGADO[id] ? 'plano antigo: equivale ao Pro na migração' : ''))}">${esc(nomePlano(id))}</span>` : '<span class="suave pequeno">—</span>';
+const orgDe = (id) => ((dados && dados.organizacoes) || []).find((o) => o.id === id) || null;
+const membrosDe = (id) => ((dados && dados.usuarios) || []).filter((u) => u.organizacao === id);
+
+// ───── N · organizações. Lista com filtro/ordem (tabela), formulário de dados + plano/teste (F8). O servidor revalida tudo (tipo, tamanho, SVG sem script).
 const LOGO_MAX = 262144;   // = _compartilhado/personalizacao.ts › LOGO_MAX e o check da migração
 let logoAtual = null;      // data URL do logo em edição (null = sem logo)
+const testeDaOrg = (o) => !o.teste_ate ? '' : hojeTeste() > String(o.teste_ate).slice(0, 10) ? `<span class="estado bloq" title="todos os membros só olham">encerrado em ${esc(dataTeste(o.teste_ate))}</span>` : `<span class="estado pend">até ${esc(dataTeste(o.teste_ate))}</span>`;
 function desenhaOrgs() {
-  $('o-cartao').hidden = dados.organizacoesDisponivel === false;
+  const disponivel = dados.organizacoesDisponivel !== false;
+  $('o-cartao').hidden = !disponivel;
+  $('og-nova').disabled = !disponivel;
+  if (!disponivel) { $('og-corpo').innerHTML = '<tr><td colspan="7" class="nada">Organizações indisponíveis neste servidor (banco sem a migração N).</td></tr>'; conta('n-organizacoes', 0); return; }
   const orgs = dados.organizacoes || [];
-  const conta = (id) => dados.usuarios.filter((u) => u.organizacao === id).length;
-  $('o-lista').innerHTML = orgs.length ? orgs.map((o) => `<li>
-      <span class="cor" style="background:${o.cor && /^#[0-9a-fA-F]{6}$/.test(o.cor) ? o.cor : 'transparent'}" title="${esc(o.cor || 'sem cor')}"></span>
-      ${o.logo ? `<img src="${esc(o.logo)}" alt="">` : ''}
-      <span class="nome"><strong>${esc(o.nome)}</strong> <span class="suave pequeno">· ${conta(o.id)} usuário(s)${o.plano ? ' · plano ' + esc(nomePlano(o.plano)) + (o.teste_ate ? (hojeTeste() > o.teste_ate ? ' · teste encerrado' : ' · teste até ' + esc(dataTeste(o.teste_ate))) : '') : ''}</span>${o.origem === 'convite' ? ' <span class="pequeno" title="criada pelo próprio fornecedor ao aceitar um convite (U7): revisar o plano e os dados">· criada por convite — revisar</span>' : ''}</span>
-      <button class="mini" data-o="editar" data-id="${esc(o.id)}">Editar</button>
-      <button class="mini perigo" data-o="excluir" data-id="${esc(o.id)}">Excluir</button></li>`).join('')
-    : '<li class="suave pequeno">Nenhuma organização cadastrada.</li>';
+  conta('n-organizacoes', orgs.length);
+  // filtro por plano (opções = planos em uso)
+  const sel = $('og-plano'), atualF = sel.value;
+  const emUso = [...new Set(orgs.map((o) => o.plano).filter(Boolean))];
+  sel.innerHTML = '<option value="">todos os planos</option>' + emUso.map((id) => `<option value="${esc(id)}">${esc(nomePlano(id))}</option>`).join('');
+  sel.value = emUso.includes(atualF) ? atualF : '';
+  const ordem = $('og-ordem').value;
+  const lista = orgs.filter((o) => (!sel.value || o.plano === sel.value) && casaTexto(o.nome, nomePlano(o.plano), ...membrosDe(o.id).map((u) => u.email + ' ' + u.nome)));
+  lista.sort((a, b) => ordem === 'recente' ? String(b.criada_em || '').localeCompare(String(a.criada_em || '')) || a.nome.localeCompare(b.nome, 'pt-BR')
+    : ordem === 'plano' ? nomePlano(a.plano).localeCompare(nomePlano(b.plano), 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR') : a.nome.localeCompare(b.nome, 'pt-BR'));
+  $('og-corpo').innerHTML = lista.length ? lista.map((o) => {
+    const membros = membrosDe(o.id);
+    return `<tr data-org="${esc(o.id)}">
+      <td><span class="cor" style="background:${o.cor && /^#[0-9a-fA-F]{6}$/.test(o.cor) ? esc(o.cor) : 'transparent'}" title="${esc(o.cor || 'sem cor')}"></span>${o.logo ? `<img class="logo-mini" src="${esc(o.logo)}" alt="">` : ''}<strong>${esc(o.nome)}</strong>${o.origem === 'convite' ? '<br><span class="estado pend" title="criada pelo próprio fornecedor ao aceitar um convite (U7): revisar o plano e os dados">criada por convite — revisar</span>' : ''}<br><span class="suave pequeno">desde ${data(o.criada_em)}</span></td>
+      <td>${dados.planoDisponivel === true ? chipPlano(o.plano) : '<span class="suave pequeno">por usuário</span>'}</td>
+      <td class="pequeno">${o.plano === 'convidada' ? '<span class="suave">sem prazo</span>' : (testeDaOrg(o) || '<span class="suave">sem teste</span>')}</td>
+      <td class="pequeno">${textoAssentos(o).replace(/^ · /, '') || '<span class="suave">—</span>'}</td>
+      <td class="pequeno">${membros.length}${dados.papeisDisponivel === true ? ` <span class="suave">· Gestor ${membros.filter((u) => u.papel === 'gestor').length} de ${esc(o.assentos_gestor || 2)}</span>` : ''}</td>
+      <td>${o.perfil && dados.perfisDisponivel === true ? `<span class="chip nivel nivel-${esc(o.perfil.nivel)}" data-p="${esc(o.id)}" title="perfil da organização (clique para editar)">${esc(nomeNivel(o.perfil.nivel))}${o.perfil.canal === 'beta' ? ' · beta' : ''}${o.perfil.vender ? ' · Vender' : ''}</span>` : '<span class="suave pequeno">—</span>'}</td>
+      <td class="acoes-col"><div class="acoes"><button class="mini" type="button" data-o="editar" data-id="${esc(o.id)}">Editar</button><button class="mini perigo" type="button" data-o="excluir" data-id="${esc(o.id)}">Excluir</button></div></td></tr>`;
+  }).join('') : `<tr><td colspan="7" class="nada">${orgs.length ? 'Nenhuma organização casa com a busca ou o filtro.' : 'Nenhuma organização cadastrada. Use “Nova organização”.'}</td></tr>`;
+  // lista simples (compatível com os ensaios que leem #o-lista: nome + selo do nível)
+  $('o-lista').innerHTML = orgs.map((o) => `<li data-id="${esc(o.id)}"><span class="nome"><strong>${esc(o.nome)}</strong></span><button class="mini" type="button" data-o="editar" data-id="${esc(o.id)}">Editar</button></li>`).join('');
 }
+$('og-ordem').onchange = () => dados && desenhaOrgs();
+$('og-plano').onchange = () => dados && desenhaOrgs();
+$('og-atualizar').onclick = () => carrega();
+$('og-nova').onclick = () => { limpaOrg(); avisa('o-msg', ''); $('o-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('o-nome').focus(); };
 function previaOrg() {
   const img = $('o-previa-logo');
   if (logoAtual) { img.src = logoAtual; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
@@ -525,12 +825,18 @@ function previaOrg() {
   $('o-previa-nome').textContent = $('o-nome').value.trim() || '—';
   $('o-previa-nome').style.borderLeftColor = $('o-sem-cor').checked ? '' : $('o-cor').value;
 }
+function dicaPlano() {
+  const p = planoDe($('o-plano').value);
+  $('o-teste-padrao').disabled = !p || !p.testeDias;
+  $('o-teste-padrao').textContent = p && p.testeDias ? `teste padrão do plano (+${p.testeDias} dias)` : 'sem teste neste plano';
+  $('o-plano-dica').textContent = p ? `${p.nome}: ${p.nota}.${p.minimo > 1 ? ` Mínimo ${p.minimo} assentos.` : p.assentos ? ` ${p.assentos} assento(s) incluído(s).` : ''}` : PLANO_LEGADO[$('o-plano').value] ? 'Plano antigo: na migração dos degraus vira Pro.' : '';
+}
 function limpaOrg() {
   $('o-id').value = ''; $('o-nome').value = ''; $('o-sobre').value = ''; $('o-logo').value = '';
   $('o-cor').value = '#0e8f7e'; $('o-sem-cor').checked = true; logoAtual = null;
-  $('o-salvar').textContent = 'Criar organização'; $('o-novo').hidden = true;
-  $('o-plano').value = 'oem'; $('o-teste').value = '';   // F8
-  previaOrg();
+  $('o-salvar').textContent = 'Criar organização'; $('o-novo').hidden = true; $('o-titulo').textContent = 'Nova organização';
+  $('o-plano').innerHTML = opcoesPlano(planoAlvoPro()); $('o-teste').value = '';   // F8 · F031-E: padrão Pro (OEM num servidor antigo)
+  dicaPlano(); previaOrg();
 }
 function leArquivo(f) {
   return new Promise((ok, falha) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = () => falha(r.error); r.readAsDataURL(f); });
@@ -541,20 +847,30 @@ $('o-logo').onchange = async () => {
   if (!f) return;
   const ehPng = f.type === 'image/png' || /\.png$/i.test(f.name), ehSvg = f.type === 'image/svg+xml' || /\.svg$/i.test(f.name);
   if (!ehPng && !ehSvg) { $('o-logo').value = ''; return avisa('o-msg', 'Use um arquivo PNG ou SVG.'); }
-  let url = await leArquivo(f);
+  let urlLogo = await leArquivo(f);
   // o tipo do data URL segue a extensão/tipo conferido (alguns sistemas mandam SVG sem MIME)
-  url = url.replace(/^data:[^;,]*;base64,/, ehPng ? 'data:image/png;base64,' : 'data:image/svg+xml;base64,');
-  if (url.length > LOGO_MAX) { $('o-logo').value = ''; return avisa('o-msg', 'Logo grande demais: até 256 KB como data URL (~190 KB de arquivo). Reduza ou exporte otimizado.'); }
+  urlLogo = urlLogo.replace(/^data:[^;,]*;base64,/, ehPng ? 'data:image/png;base64,' : 'data:image/svg+xml;base64,');
+  if (urlLogo.length > LOGO_MAX) { $('o-logo').value = ''; return avisa('o-msg', 'Logo grande demais: até 256 KB como data URL (~190 KB de arquivo). Reduza ou exporte otimizado.'); }
   if (ehSvg) {
     const txt = await f.text();
     if (/<script|\son[a-z]+\s*=|javascript:|<foreignobject/i.test(txt)) { $('o-logo').value = ''; return avisa('o-msg', 'SVG com script ou eventos não é aceito — exporte um SVG simples.'); }
   }
-  logoAtual = url;
+  logoAtual = urlLogo;
   previaOrg();
 };
 $('o-tirar-logo').onclick = () => { logoAtual = null; $('o-logo').value = ''; previaOrg(); };
 $('o-nome').oninput = previaOrg; $('o-cor').oninput = () => { $('o-sem-cor').checked = false; previaOrg(); }; $('o-sem-cor').onchange = previaOrg;
+$('o-plano').onchange = dicaPlano;
+$('o-teste-padrao').onclick = () => { const p = planoDe($('o-plano').value); if (p && p.testeDias) $('o-teste').value = somaDiasTeste(hojeTeste(), p.testeDias); };
 $('o-novo').onclick = () => { limpaOrg(); avisa('o-msg', ''); };
+function editaOrg(o) {
+  $('o-id').value = o.id; $('o-nome').value = o.nome; $('o-sobre').value = o.sobre || ''; $('o-logo').value = '';
+  logoAtual = o.logo || null; $('o-sem-cor').checked = !o.cor; if (o.cor) $('o-cor').value = o.cor;
+  $('o-plano').innerHTML = opcoesPlano(o.plano || 'pro'); $('o-teste').value = o.teste_ate ? String(o.teste_ate).slice(0, 10) : '';   // F8
+  $('o-salvar').textContent = 'Salvar alterações'; $('o-novo').hidden = false; $('o-titulo').textContent = 'Editar: ' + o.nome;
+  dicaPlano(); previaOrg();
+  if (!$('p-cartao').hidden) { $('p-org').value = o.id; avisa('p-msg', ''); preenchePerfil(); }
+}
 $('o-form').onsubmit = async (e) => {
   e.preventDefault();
   avisa('o-msg', '');
@@ -566,34 +882,30 @@ $('o-form').onsubmit = async (e) => {
   // F8: plano e teste da organização (na criação vão juntos; na edição, só o que mudou)
   const comPlano = dados && dados.planoDisponivel === true, plano = $('o-plano').value, teste = $('o-teste').value || null;
   if (comPlano && !id) { corpo.plano = plano; corpo.teste_ate = teste; }
-  const antes = id ? (dados.organizacoes || []).find((x) => x.id === id) : null;
+  const antes = id ? orgDe(id) : null;
   try {
     await chamaAdmin(corpo);
     if (comPlano && antes && antes.plano !== plano) await chamaAdmin({ acao: 'set_plano_organizacao', organizacao: id, plano });
     if (comPlano && antes && (antes.teste_ate || null) !== teste) await chamaAdmin({ acao: 'set_teste_organizacao', organizacao: id, teste_ate: teste });
-    avisa('o-msg', id ? 'Organização atualizada.' : 'Organização criada.', 'ok'); limpaOrg(); await carrega();
+    avisa('o-msg', id ? 'Organização atualizada. Vale na próxima renovação da licença dos membros.' : 'Organização criada. Agora crie as pessoas dela em “Pessoas e assentos”.', 'ok'); limpaOrg(); await carrega();
   }
-  catch (err) { avisa('o-msg', err.message); }
+  catch (err) { avisa('o-msg', explica(err)); }
   $('o-salvar').disabled = false;
 };
-$('o-lista').onclick = async (ev) => {
+async function acaoOrg(ev) {
   const b = ev.target.closest('button[data-o]');
   if (!b) return;
-  const o = (dados.organizacoes || []).find((x) => x.id === b.dataset.id);
+  const o = orgDe(b.dataset.id);
   if (!o) return;
-  if (b.dataset.o === 'editar') {
-    $('o-id').value = o.id; $('o-nome').value = o.nome; $('o-sobre').value = o.sobre || ''; $('o-logo').value = '';
-    logoAtual = o.logo || null; $('o-sem-cor').checked = !o.cor; if (o.cor) $('o-cor').value = o.cor;
-    $('o-plano').value = o.plano || 'oem'; $('o-teste').value = o.teste_ate ? String(o.teste_ate).slice(0, 10) : '';   // F8
-    $('o-salvar').textContent = 'Salvar alterações'; $('o-novo').hidden = false;
-    previaOrg(); $('o-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return;
-  }
-  if (!confirm(`Excluir a organização "${o.nome}"? Os usuários vinculados ficam sem personalização na próxima renovação.`)) return;
+  if (b.dataset.o === 'editar') { editaOrg(o); $('o-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const n = membrosDe(o.id).length;
+  if (!(await caixa(`Excluir a organização “${o.nome}”?\n${n} pessoa(s) vinculada(s) ficam sem organização (só olhar) e sem personalização na próxima renovação da licença. Os projetos não são apagados.`, 'Excluir'))) return;
   b.disabled = true;
-  try { await chamaAdmin({ acao: 'excluir_organizacao', organizacao: o.id }); if ($('o-id').value === o.id) limpaOrg(); await carrega(); }
-  catch (err) { avisa('o-msg', err.message); b.disabled = false; }
-};
+  try { await chamaAdmin({ acao: 'excluir_organizacao', organizacao: o.id }); if ($('o-id').value === o.id) limpaOrg(); avisa('og-msg', `“${o.nome}” excluída.`, 'ok'); await carrega(); }
+  catch (err) { avisa('og-msg', explica(err)); b.disabled = false; }
+}
+$('og-corpo').addEventListener('click', acaoOrg);
+$('o-lista').addEventListener('click', acaoOrg);
 
 // ───── U3 · catálogos de fabricante: lista (ação catalogos_fabricante), marca público e dona (set_catalogo_fabricante). Banco sem a
 // migração u3_catalogo_publico → `catalogosDisponivel: false` e o cartão fica escondido. O servidor revalida tudo.
@@ -601,37 +913,44 @@ let catalogosFab = [];
 async function carregaCatalogos() {
   avisa('cf-msg', '');
   let r;
-  try { r = await chamaAdmin({ acao: 'catalogos_fabricante' }); } catch (e) { $('cf-cartao').hidden = false; return avisa('cf-msg', e.message); }
+  try { r = await chamaAdmin({ acao: 'catalogos_fabricante' }); } catch (e) { $('cf-cartao').hidden = false; return avisa('cf-msg', explica(e)); }
   $('cf-cartao').hidden = r.catalogosDisponivel !== true;
+  $('dt-indisponivel').hidden = !($('cf-cartao').hidden && $('vt-cartao').hidden);
   catalogosFab = r.catalogos || [];
   const orgs = (dados && dados.organizacoes) || [];
-  const opcoesOrg = (atual) => '<option value="">— sem dona (equipe) —</option>' + orgs.map((o) => `<option value="${esc(o.id)}"${o.id === atual ? ' selected' : ''}>${esc(o.nome)}</option>`).join('');
-  $('cf-lista').innerHTML = catalogosFab.length ? catalogosFab.map((c) => `<li>
+  const opcoesOrg = (atual) => '<option value="">— sem dona (equipe) —</option>' + orgs.map((o) => `<option value="${esc(o.id)}"${o.id === atual ? ' selected' : ''}>${esc(o.nome)}${o.plano ? ' · ' + esc(nomePlano(o.plano)) : ''}</option>`).join('');
+  const lista = catalogosFab.filter((c) => casaTexto(c.nome, c.fabricante, (orgDe(c.organizacao) || {}).nome));
+  $('cf-lista').innerHTML = lista.length ? lista.map((c) => {
+    const dona = orgDe(c.organizacao), semPro = c.publico && dona && dona.plano && !ehPro(dona.plano);
+    return `<li>
       <span class="chip${c.publico ? ' nivel-grupo' : ''}">${c.publico ? 'público' : 'privado'}</span>
-      <span class="nome"><b>${esc(c.nome)}</b> <span class="suave pequeno">${esc(c.fabricante)} · v${esc(c.versao)} · ${esc(c.blocos)} bloco(s) · ${esc(String(c.publicado_em || '').slice(0, 10))} · sha256 ${esc(String(c.sha256 || '').slice(0, 12))}…</span></span>
-      <select data-cf="dona" data-f="${esc(c.fabricante)}" style="width:auto" aria-label="organização dona">${opcoesOrg(c.organizacao)}</select>
-      <button class="mini" data-cf="publico" data-f="${esc(c.fabricante)}" data-v="${c.publico ? '0' : '1'}">${c.publico ? 'Tornar privado' : 'Marcar público'}</button>
-    </li>`).join('') : '<li class="suave pequeno">Nenhum catálogo publicado ainda (Oficina de Blocos › ☁ fabricante…).</li>';
+      <span class="nome"><b>${esc(c.nome)}</b> <span class="suave pequeno">${esc(c.fabricante)} · v${esc(c.versao)} · ${esc(c.blocos)} bloco(s) · ${esc(String(c.publicado_em || '').slice(0, 10))} · sha256 ${esc(String(c.sha256 || '').slice(0, 12))}…</span>${semPro ? '<br><span class="estado pend">público, mas a dona não está no plano Pro (D68): ajuste o plano em Licenças ou torne privado</span>' : ''}</span>
+      <select data-cf="dona" data-f="${esc(c.fabricante)}" class="mini" aria-label="organização dona">${opcoesOrg(c.organizacao)}</select>
+      <button class="mini" type="button" data-cf="publico" data-f="${esc(c.fabricante)}" data-v="${c.publico ? '0' : '1'}">${c.publico ? 'Tornar privado' : 'Marcar público'}</button>
+    </li>`; }).join('') : `<li class="nada">${catalogosFab.length ? 'Nenhum catálogo casa com a busca.' : 'Nenhum catálogo publicado ainda (Oficina de Blocos › ☁ fabricante…).'}</li>`;
 }
 $('cf-atualizar').onclick = () => carregaCatalogos();
 $('cf-lista').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-cf="publico"]');
   if (!b) return;
+  const c = catalogosFab.find((x) => x.fabricante === b.dataset.f) || {}, dona = orgDe(c.organizacao);
+  if (b.dataset.v === '1' && dona && dona.plano && !ehPro(dona.plano)) return avisa('cf-msg', `Catálogo público só para organização Pro (D68): “${dona.nome}” está no plano ${nomePlano(dona.plano)}. Mude o plano em Licenças antes.`);
   b.disabled = true;
-  try { await chamaAdmin({ acao: 'set_catalogo_fabricante', fabricante: b.dataset.f, publico: b.dataset.v === '1' }); avisa('cf-msg', 'Salvo — vale na próxima sincronização do app.', 'ok'); await carregaCatalogos(); }
-  catch (err) { avisa('cf-msg', err.message); b.disabled = false; }
+  try { await chamaAdmin({ acao: 'set_catalogo_fabricante', fabricante: b.dataset.f, publico: b.dataset.v === '1' }); avisa('cf-msg', 'Salvo — vale na próxima sincronização do app.', 'ok'); await carregaCatalogos(); await carregaVitrine(); }
+  catch (err) { avisa('cf-msg', explica(err)); b.disabled = false; }
 });
 $('cf-lista').addEventListener('change', async (e) => {
   const s = e.target.closest('select[data-cf="dona"]');
   if (!s) return;
   try { await chamaAdmin({ acao: 'set_catalogo_fabricante', fabricante: s.dataset.f, organizacao: s.value || null }); avisa('cf-msg', 'Dona salva — vale na próxima sincronização do app.', 'ok'); await carregaCatalogos(); }
-  catch (err) { avisa('cf-msg', err.message); }
+  catch (err) { avisa('cf-msg', explica(err)); }
 });
 
 // ───── F2 · vitrine do catálogo: destaques (cria_destaque, edita_destaque, encerra_destaque) e ordem Recomendado (set_catalogo_ordem),
 // lidos por vitrine_catalogo. Banco sem a migração f2_catalogo_vitrine → `vitrineDisponivel: false` e o cartão fica escondido. Nomes e
 // regras em servidor/supabase/functions/_compartilhado/vitrine-catalogo.ts; o servidor revalida tudo (só catálogo público entra).
-const ROTULO_VT = { destaque: 'Em destaque', patrocinado: 'Patrocinado' };
+// D60: o rótulo é sempre "Em destaque" ("Patrocinado" saiu da interface; registros antigos continuam legíveis). D68: só organização Pro.
+const ROTULO_VT = { destaque: 'Em destaque', patrocinado: 'Patrocinado (antigo)' };
 let vitrine = { destaques: [], catalogos: [], ordem: [] };
 const hojeVt = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const situacaoVt = (d) => (d.encerrado_em || d.fim < hojeVt() ? 'encerrado' : d.inicio > hojeVt() ? 'agendado' : 'vigente');
@@ -639,35 +958,46 @@ function limpaVt() { $('vt-id').value = ''; $('vt-ordem').value = '0'; $('vt-rot
 async function carregaVitrine() {
   avisa('vt-msg', '');
   let r;
-  try { r = await chamaAdmin({ acao: 'vitrine_catalogo' }); } catch (e) { $('vt-cartao').hidden = false; return avisa('vt-msg', e.message); }
+  try { r = await chamaAdmin({ acao: 'vitrine_catalogo' }); } catch (e) { $('vt-cartao').hidden = false; return avisa('vt-msg', explica(e)); }
   $('vt-cartao').hidden = r.vitrineDisponivel !== true;
+  $('dt-indisponivel').hidden = !($('cf-cartao').hidden && $('vt-cartao').hidden);
   vitrine = r;
   const pub = (r.catalogos || []).filter((c) => c.publico);
   const nomeFab = (id) => ((r.catalogos || []).find((c) => c.fabricante === id) || { nome: id }).nome;
-  $('vt-fab').innerHTML = pub.length ? pub.map((c) => `<option value="${esc(c.fabricante)}">${esc(c.nome)} (${esc(c.fabricante)})</option>`).join('') : '<option value="">— nenhum catálogo público —</option>';
+  const donaDoCat = (id) => { const c = (catalogosFab || []).find((x) => x.fabricante === id); return c ? orgDe(c.organizacao) : null; };
+  $('vt-fab').innerHTML = pub.length ? pub.map((c) => { const d = donaDoCat(c.fabricante); return `<option value="${esc(c.fabricante)}">${esc(c.nome)} (${esc(c.fabricante)})${d ? ' · ' + esc(d.nome) + ' · ' + esc(nomePlano(d.plano)) : ' · sem dona'}</option>`; }).join('') : '<option value="">— nenhum catálogo público —</option>';
   const ordemSit = { vigente: 0, agendado: 1, encerrado: 2 };
   const ds = [...(r.destaques || [])].sort((a, b) => ordemSit[situacaoVt(a)] - ordemSit[situacaoVt(b)] || a.ordem - b.ordem || String(b.inicio).localeCompare(String(a.inicio)));
-  $('vt-lista').innerHTML = ds.length ? ds.map((d) => { const st = situacaoVt(d); return `<li>
+  conta('n-destaque', ds.filter((d) => situacaoVt(d) === 'vigente').length);
+  const lista = ds.filter((d) => casaTexto(nomeFab(d.fabricante), d.fabricante));
+  $('vt-lista').innerHTML = lista.length ? lista.map((d) => { const st = situacaoVt(d); return `<li>
       <span class="chip${st === 'vigente' ? ' nivel-grupo' : ''}">${st}</span>
       <span class="nome"><b>${esc(nomeFab(d.fabricante))}</b> <span class="suave pequeno">${esc(ROTULO_VT[d.rotulo] || d.rotulo)} · ${esc(d.inicio)} → ${esc(d.fim)} · ordem ${esc(d.ordem)}${d.encerrado_em ? ' · encerrado em ' + esc(String(d.encerrado_em).slice(0, 10)) : ''}</span></span>
-      ${d.encerrado_em ? '' : `<button class="mini" data-vt="edita" data-id="${esc(d.id)}">Editar</button><button class="mini" data-vt="encerra" data-id="${esc(d.id)}">Encerrar</button>`}
-    </li>`; }).join('') : '<li class="suave pequeno">Nenhum destaque cadastrado.</li>';
+      ${d.encerrado_em ? '' : `<button class="mini" type="button" data-vt="edita" data-id="${esc(d.id)}">Editar</button><button class="mini" type="button" data-vt="encerra" data-id="${esc(d.id)}">Encerrar</button>`}
+    </li>`; }).join('') : `<li class="nada">${ds.length ? 'Nenhum destaque casa com a busca.' : 'Nenhum destaque cadastrado.'}</li>`;
   const ord = (l) => (((r.ordem || []).find((o) => o.lista === l) || {}).itens || []).join('\n');
   $('vt-ord-blocos').value = ord('blocos'); $('vt-ord-fab').value = ord('fornecedores');
   if (!$('vt-id').value) limpaVt();
 }
-$('vt-atualizar').onclick = () => carregaVitrine();
+$('vt-atualizar').onclick = () => { carregaCatalogos(); carregaVitrine(); };
 $('vt-novo').onclick = () => limpaVt();
 $('vt-form').onsubmit = async (e) => {
   e.preventDefault();
   const id = $('vt-id').value;
   const campos = { rotulo: $('vt-rotulo').value, inicio: $('vt-inicio').value, fim: $('vt-fim').value, ordem: Number($('vt-ordem').value || 0) };
+  if (!id && !$('vt-fab').value) return avisa('vt-msg', 'Marque um catálogo como público (acima) antes de criar um destaque.');
+  if (campos.fim && campos.inicio && campos.fim < campos.inicio) return avisa('vt-msg', 'O fim precisa ser igual ou depois do início.');
+  if (!id) {   // D68: Destaque só para organização Pro — a dona do catálogo precisa estar no Pro (OEM antigo vale)
+    const c = (catalogosFab || []).find((x) => x.fabricante === $('vt-fab').value), dona = c ? orgDe(c.organizacao) : null;
+    if (!dona) return avisa('vt-msg', 'Destaque só para organização Pro (D68): defina a organização dona do catálogo (cartão acima) antes.');
+    if (dona.plano && !ehPro(dona.plano)) return avisa('vt-msg', `Destaque só para organização Pro (D68): “${dona.nome}” está no plano ${nomePlano(dona.plano)}. Mude o plano em Licenças antes.`);
+  }
   try {
     if (id) await chamaAdmin({ acao: 'edita_destaque', id, ...campos });
     else await chamaAdmin({ acao: 'cria_destaque', fabricante: $('vt-fab').value, ...campos });
     avisa('vt-msg', id ? 'Destaque salvo.' : 'Destaque criado — vale na próxima sincronização do app.', 'ok');
     limpaVt(); await carregaVitrine();
-  } catch (err) { avisa('vt-msg', err.message); }
+  } catch (err) { avisa('vt-msg', explica(err)); }
 };
 $('vt-lista').addEventListener('click', async (e) => {
   const b = e.target.closest('button[data-vt]');
@@ -675,16 +1005,15 @@ $('vt-lista').addEventListener('click', async (e) => {
   const d = (vitrine.destaques || []).find((x) => x.id === b.dataset.id);
   if (!d) return;
   if (b.dataset.vt === 'edita') {
-    $('vt-id').value = d.id; $('vt-fab').value = d.fabricante; $('vt-fab').disabled = true; $('vt-rotulo').value = d.rotulo;
+    $('vt-id').value = d.id; $('vt-fab').value = d.fabricante; $('vt-fab').disabled = true; $('vt-rotulo').value = d.rotulo === 'patrocinado' ? 'destaque' : d.rotulo;
     $('vt-inicio').value = d.inicio; $('vt-fim').value = d.fim; $('vt-ordem').value = String(d.ordem);
     $('vt-salvar').textContent = 'Salvar destaque'; $('vt-novo').hidden = false;
     return;
   }
-  // encerrar: dois cliques (o botão pede confirmação no próprio texto — sem diálogo nativo)
-  if (b.dataset.armado !== '1') { b.dataset.armado = '1'; b.textContent = 'Confirmar encerrar'; return; }
+  if (!(await caixa(`Encerrar o destaque de “${(vitrine.catalogos || []).concat().find((c) => c.fabricante === d.fabricante)?.nome || d.fabricante}” hoje? Ele some da Biblioteca na próxima sincronização; o registro fica no histórico.`, 'Encerrar'))) return;
   b.disabled = true;
   try { await chamaAdmin({ acao: 'encerra_destaque', id: d.id }); avisa('vt-msg', 'Destaque encerrado.', 'ok'); await carregaVitrine(); }
-  catch (err) { avisa('vt-msg', err.message); b.disabled = false; }
+  catch (err) { avisa('vt-msg', explica(err)); b.disabled = false; }
 });
 $('vt-ord-salvar').onclick = async () => {
   const linhas = (t) => t.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean);
@@ -692,23 +1021,25 @@ $('vt-ord-salvar').onclick = async () => {
     await chamaAdmin({ acao: 'set_catalogo_ordem', lista: 'blocos', itens: linhas($('vt-ord-blocos').value) });
     await chamaAdmin({ acao: 'set_catalogo_ordem', lista: 'fornecedores', itens: linhas($('vt-ord-fab').value) });
     avisa('vt-msg', 'Ordem salva — vale na próxima sincronização do app.', 'ok'); await carregaVitrine();
-  } catch (err) { avisa('vt-msg', err.message); }
+  } catch (err) { avisa('vt-msg', explica(err)); }
 };
 
 // ───── U1 · perfil da organização. Níveis, canais e temas curados vêm do servidor (`listar`: niveis, canais, temasCurados — gerados de
 // _compartilhado/perfil-organizacao.ts e temas-curados.ts, sem cópia aqui); o servidor revalida tudo (ação set_perfil_organizacao).
+// D69: sem nível Parceiro — o seletor só oferece Padrão e Grupo; uma organização ainda em Parceiro aparece como "antigo" até ser trocada.
+const NIVEIS_OFERECIDOS = ['padrao', 'grupo'];
 const REGRA_NIVEL = {
   padrao: 'Padrão: nome e logo StudioRP, tema StudioRP (o usuário escolhe claro/escuro), carimbos StudioRP.',
-  parceiro: 'Parceiro: logo e nome da organização em destaque, StudioRP como co-marca discreta, tema StudioRP, carimbos organização + StudioRP.',
   grupo: 'Grupo: tema de Grupo travado, logo em destaque, co-marca “<nome> · by StudioRP”, carimbos organização + “by StudioRP”.',
+  parceiro: 'Parceiro é um nível antigo (D69): escolha Padrão ou Grupo e salve.',
 };
-const nomeNivel = (id) => ((dados.niveis || []).find((n) => n.id === id) || { nome: id }).nome;
-function opcoes(sel, lista, atual) { sel.innerHTML = lista.map((o) => `<option value="${esc(o.id)}"${o.id === atual ? ' selected' : ''}>${esc(o.nome)}</option>`).join(''); }
+const nomeNivel = (id) => id === 'parceiro' ? 'Parceiro (antigo)' : ((dados.niveis || []).find((n) => n.id === id) || { nome: id }).nome;
+function opcoes(sel, lista, atual) { sel.innerHTML = lista.map((o) => `<option value="${esc(o.id)}"${o.id === atual ? ' selected' : ''}${o.desligada ? ' disabled' : ''}>${esc(o.nome)}</option>`).join(''); }
 function desenhaPerfis() {
   const orgs = dados.organizacoes || [];
   $('p-cartao').hidden = dados.perfisDisponivel !== true || !orgs.length;
   if ($('p-cartao').hidden) return;
-  // selo do nível na lista de organizações (ao lado do botão Editar; clicar abre o perfil)
+  // selo do nível na lista simples (os ensaios leem #o-lista .chip.nivel); na tabela o selo já vem de desenhaOrgs
   for (const b of $('o-lista').querySelectorAll('button[data-o="editar"]')) {
     const o = orgs.find((x) => x.id === b.dataset.id);
     if (!o || !o.perfil) continue;
@@ -716,18 +1047,22 @@ function desenhaPerfis() {
   }
   const atual = orgs.some((o) => o.id === $('p-org').value) ? $('p-org').value : orgs[0].id;
   opcoes($('p-org'), orgs.map((o) => ({ id: o.id, nome: o.nome })), atual);
-  opcoes($('p-nivel'), dados.niveis || [], 'padrao');
   opcoes($('p-canal'), dados.canais || [], 'estavel');
   opcoes($('p-tema'), [{ id: '', nome: 'StudioRP (padrão)' }, ...(dados.temasCurados || []).map((t) => ({ id: t.id, nome: `${t.nome} (${t.bases.join('/')})` }))], '');
   preenchePerfil();
+}
+function opcoesNivel(atual) {
+  const lista = (dados.niveis || []).filter((n) => NIVEIS_OFERECIDOS.includes(n.id));
+  if (atual && !lista.some((n) => n.id === atual)) lista.push({ id: atual, nome: nomeNivel(atual), desligada: true });
+  opcoes($('p-nivel'), lista, atual || 'padrao');
 }
 // F6a: assentos de Gestor da organização escolhida no cartão (gestores em uso contados na lista de usuários)
 function preencheAssentos() {
   $('p-assentos-linha').hidden = dados.papeisDisponivel !== true;
   if ($('p-assentos-linha').hidden) return;
-  const o = (dados.organizacoes || []).find((x) => x.id === $('p-org').value);
+  const o = orgDe($('p-org').value);
   if (!o) return;
-  const usados = (dados.usuarios || []).filter((u) => u.organizacao === o.id && u.papel === 'gestor').length;
+  const usados = membrosDe(o.id).filter((u) => u.papel === 'gestor').length;
   $('p-assentos').value = String(o.assentos_gestor || 2);
   preencheAssentosPlano(o);   // F8
   $('p-assentos-uso').textContent = `${usados} em uso. O Gestor da organização não promove além disso; para reduzir, rebaixe alguém antes.`;
@@ -735,20 +1070,23 @@ function preencheAssentos() {
 $('p-assentos-salvar').onclick = async () => {
   avisa('p-msg', '');
   const n = Number($('p-assentos').value);
+  if (!(n >= 1)) return avisa('p-msg', 'Assentos de Gestor: pelo menos 1.');
   $('p-assentos-salvar').disabled = true;
-  try { await chamaAdmin({ acao: 'set_assentos_gestor', organizacao: $('p-org').value, assentos: n }); await carrega(); avisa('p-msg', 'Assentos salvos. Valem na hora para o Gestor da organização.', 'ok'); }
-  catch (err) { avisa('p-msg', err.message); }
+  try { await chamaAdmin({ acao: 'set_assentos_gestor', organizacao: $('p-org').value, assentos: n }); await carrega(); avisa('p-msg', 'Assentos de Gestor salvos. Valem na hora para o Gestor da organização.', 'ok'); }
+  catch (err) { avisa('p-msg', explica(err)); }
   finally { $('p-assentos-salvar').disabled = false; }
 };
 function preenchePerfil() {
-  const o = (dados.organizacoes || []).find((x) => x.id === $('p-org').value);
+  const o = orgDe($('p-org').value);
   if (!o || !o.perfil) return;
   const p = o.perfil;
-  $('p-nivel').value = p.nivel; $('p-canal').value = p.canal; $('p-tema').value = p.tema || '';
+  opcoesNivel(p.nivel);
+  $('p-canal').value = p.canal; $('p-tema').value = p.tema || '';
   $('p-comarca').value = p.coMarca ? p.coMarca.texto : ''; $('p-comarca-pos').value = p.coMarca ? p.coMarca.posicao : 'barra';
   const todos = p.catalogos.publicos.includes('*');
   $('p-todos').checked = todos; $('p-publicos').value = todos ? '' : p.catalogos.publicos.join(', ');
   $('p-proprio').checked = p.catalogos.proprio;
+  $('p-vender').checked = p.vender === true;   // W8
   ajustaPerfil();
   preencheAssentos();
 }
@@ -762,33 +1100,31 @@ function ajustaPerfil() {
 }
 $('p-org').onchange = () => { avisa('p-msg', ''); preenchePerfil(); };
 $('p-nivel').onchange = ajustaPerfil; $('p-todos').onchange = ajustaPerfil;
-$('o-lista').addEventListener('click', (ev) => {
-  const c = ev.target.closest('[data-p]');
-  if (!c) return;
-  $('p-org').value = c.dataset.p; avisa('p-msg', ''); preenchePerfil();
-  $('p-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
+function abrePerfilDe(id) { if ($('p-cartao').hidden) return; const o = orgDe(id); if (o) editaOrg(o); abre('organizacoes'); $('p-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+document.addEventListener('click', (ev) => { const c = ev.target.closest('[data-p]'); if (c) abrePerfilDe(c.dataset.p); });
 $('p-form').onsubmit = async (e) => {
   e.preventDefault();
   avisa('p-msg', '');
   const n = $('p-nivel').value, texto = $('p-comarca').value.trim();
+  if (!NIVEIS_OFERECIDOS.includes(n)) return avisa('p-msg', 'Escolha o nível Padrão ou Grupo (Parceiro saiu, D69).');
   // campos desligados pelo nível são gravados como estão (o servidor deriva por nível); só o tema fora do Grupo vai vazio
   const corpo = {
     acao: 'set_perfil_organizacao', organizacao: $('p-org').value, nivel: n, canal: $('p-canal').value,
     tema: n === 'grupo' ? ($('p-tema').value || null) : null,
     coMarca: texto ? { texto, posicao: $('p-comarca-pos').value } : null,
     catalogos: { publicos: $('p-todos').checked ? ['*'] : $('p-publicos').value.split(',').map((x) => x.trim()).filter(Boolean), proprio: $('p-proprio').checked },
+    vender: $('p-vender').checked,   // W8
   };
   $('p-salvar').disabled = true;
   try { await chamaAdmin(corpo); avisa('p-msg', `Perfil salvo (${nomeNivel(n)}). Vale na próxima renovação da licença do app.`, 'ok'); await carrega(); }
-  catch (err) { avisa('p-msg', err.message); }
+  catch (err) { avisa('p-msg', explica(err)); }
   $('p-salvar').disabled = false;
 };
 
 // C · teste grátis com prazo (perfis.teste_ate = último dia, inclusive, fuso de Brasília) — mesmas regras de
 // servidor/supabase/functions/_compartilhado/teste.ts (PRAZOS_TESTE_DIAS, FUSO_TESTE_MIN; teste confere). Vencido: a função
-// licenca emite o degrau grátis (só olhar) e o app explica "Seu teste terminou".
-const PRAZOS_TESTE = [60, 90];
+// licenca emite o degrau grátis (só olhar) e o app explica "Seu teste terminou". Os prazos dos degraus (45/30 dias, D71) ficam em PLANOS_PAINEL.
+const PRAZOS_TESTE = [30, 45];   // F031-D (D71): Starter 30 d · Pro 45 d (= _compartilhado/teste.ts)
 const FUSO_TESTE_MIN = -180;
 const hojeTeste = () => new Date(Date.now() + FUSO_TESTE_MIN * 60000).toISOString().slice(0, 10);
 const somaDiasTeste = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
@@ -797,7 +1133,7 @@ function situacaoTeste(u) {
   const t = u.plano ? u.plano.teste_ate : u.teste_ate;   // F8: o teste é o da organização (sem organização, o legado do perfil)
   if (!t) return '';
   const ate = String(t).slice(0, 10);
-  return hojeTeste() > ate ? `<br><span class="estado bloq" title="a licença sai no plano grátis (só olhar)">Teste encerrado em ${esc(dataTeste(ate))}</span>`
+  return hojeTeste() > ate ? `<br><span class="estado bloq" title="a licença sai no View (só olhar)">Teste encerrado em ${esc(dataTeste(ate))}</span>`
     : `<br><span class="estado pend">Teste até ${esc(dataTeste(ate))}</span>`;
 }
 function situacao(u) {
@@ -813,27 +1149,30 @@ const RECURSOS_EXTRA = ['editar', 'apresentar', 'exportar-3d', 'proposta', 'esti
 const RECURSOS_INTERNOS = ['oficina-blocos', 'publicar-catalogo'];
 const ehEquipe = (u) => RECURSOS_INTERNOS.every((r) => (u.recursos_extra || []).includes(r));
 
-// ───── F8 · plano e teste grátis da ORGANIZAÇÃO (D40) e usuários agrupados por organização — docs/retomada/F8-PAINEL.md.
-// O plano (OEM · Cliente) e o teste vêm de `listar` (organizacoes[].plano/teste_ate, usuarios[].plano = o efetivo); sem organização = só
-// olhar (contas antigas mantêm o plano legado por usuário). Confirmações na caixa própria (caixa), nunca nos diálogos nativos.
+// ───── F8 · plano e teste grátis da ORGANIZAÇÃO (D40), pessoas agrupadas por organização, licenças por organização e por computador.
+// O plano e o teste vêm de `listar` (organizacoes[].plano/teste_ate, usuarios[].plano = o efetivo); sem organização = só olhar (contas
+// antigas mantêm o plano legado por usuário). Confirmações na caixa própria (caixa), nunca nos diálogos nativos. — docs/retomada/F8-PAINEL.md
 const NOME_EXTRA = { editar: 'editar o projeto', apresentar: 'Apresentar', 'exportar-3d': 'exportar DXF / 3D', proposta: 'lista e proposta', estilos: 'estilos construtivos', 'devolver-escopo': 'devolver escopo', simulacao: 'etapa 4 · Simular' };
 const EXTRAS_EDITAVEIS = RECURSOS_EXTRA.filter((r) => !RECURSOS_INTERNOS.includes(r));
-const ACOES_F8 = new Set(['teste_org_prazo', 'set_degrau', 'set_recursos', 'equipe']);
-const orgDe = (id) => ((dados && dados.organizacoes) || []).find((o) => o.id === id) || null;
-const nomePlano = (id) => (((dados && dados.planos) || []).find((x) => x.id === id) || { nome: { oem: 'OEM', cliente: 'Cliente', gratis: 'só olhar' }[id] || id }).nome;
+const ACOES_F8 = new Set(['teste_org_prazo', 'set_degrau', 'set_recursos', 'equipe', 'converter_fornecedor']);   // F031-A: Convidada → plano Pro
 const nomePapel = (id) => (((dados && dados.papeis) || []).find((x) => x.id === id) || { nome: id || '' }).nome;
-function caixa(texto, ok = 'Confirmar') {
+/** caixa de confirmação própria: texto, botão; `campo` = pede um texto (nome, e-mail de confirmação) e devolve o digitado (false = cancelou) */
+function caixa(texto, ok = 'Confirmar', opc = {}) {
   return new Promise((fim) => {
-    const d = $('cx');
+    const d = $('cx'), campo = $('cx-campo');
     $('cx-texto').textContent = texto; $('cx-ok').textContent = ok;
-    const sai = (v) => { $('cx-ok').onclick = $('cx-nao').onclick = d.oncancel = null; if (d.open) d.close(); fim(v); };
-    $('cx-ok').onclick = () => sai(true); $('cx-nao').onclick = () => sai(false); d.oncancel = (e) => { e.preventDefault(); sai(false); };
+    campo.hidden = !opc.campo; campo.value = opc.campo ? (opc.campo.valor || '') : ''; campo.placeholder = opc.campo ? (opc.campo.placeholder || '') : '';
+    const sai = (v) => { $('cx-ok').onclick = $('cx-nao').onclick = d.oncancel = campo.onkeydown = null; if (d.open) d.close(); fim(v); };
+    $('cx-ok').onclick = () => sai(opc.campo ? campo.value.trim() : true); $('cx-nao').onclick = () => sai(false); d.oncancel = (e) => { e.preventDefault(); sai(false); };
+    campo.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $('cx-ok').click(); } };
     d.showModal();
+    if (opc.campo) campo.focus();
   });
 }
-// formulário "Novo usuário": organização obrigatória (ou "sem organização"), papel padrão Engenharia, o plano mostrado é o da organização
+// formulário "Nova pessoa": organização obrigatória (ou "sem organização"), papel padrão Engenharia, o plano mostrado é o da organização
 function preencheNovo() {
   $('o-plano-linha').hidden = dados.planoDisponivel !== true;   // plano e teste no formulário da organização
+  if (!$('o-id').value) { $('o-plano').innerHTML = opcoesPlano(planoAlvoPro()); dicaPlano(); }   // opções = degraus + os antigos do servidor; padrão Pro
   const sel = $('i-org'), atual = sel.value;
   sel.innerHTML = '<option value="">— escolha —</option><option value="-">Sem organização (só olhar)</option>' + (dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('');
   sel.value = [...sel.options].some((x) => x.value === atual) ? atual : '';
@@ -847,41 +1186,42 @@ function ajustaNovo() {
   $('i-papel').disabled = !o || !$('i-papel').options.length;
   $('i-plano').textContent = !v ? 'Escolha a organização (ou “Sem organização”): o plano e o teste grátis vêm dela.'
     : !o ? 'Sem organização: a conta só olha (visualizador) até ser vinculada a uma organização.'
-    : `Plano de ${o.nome}: ${o.plano ? nomePlano(o.plano) : '—'}${o.teste_ate ? ' · teste até ' + dataTeste(o.teste_ate) : o.plano ? ' · sem teste' : ''}. Muda no cartão da organização, na lista abaixo.`;
+    : `Plano de ${o.nome}: ${o.plano ? nomePlano(o.plano) : '—'}${o.teste_ate ? ' · teste até ' + dataTeste(o.teste_ate) : o.plano ? ' · sem teste' : ''}${dados.assentosDisponivel === true && o.assentos !== undefined ? ` · assentos ${(o.usados || { pagos: 0 }).pagos} de ${o.assentos}` : ''}. Muda em Licenças.`;
 }
 $('i-org').onchange = ajustaNovo;
 // filtros da lista: organização e ordem (a ordem fica guardada só neste navegador)
 function preencheFiltros() {
-  const sel = $('f-org'), atual = sel.value;
-  sel.innerHTML = '<option value="">todas as organizações</option><option value="-">sem organização</option>' + (dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('');
-  sel.value = [...sel.options].some((x) => x.value === atual) ? atual : '';
+  for (const id of ['f-org', 'm-org']) {
+    const sel = $(id), atual = sel.value;
+    sel.innerHTML = '<option value="">todas as organizações</option><option value="-">sem organização</option>' + (dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}">${esc(o.nome)}</option>`).join('');
+    sel.value = [...sel.options].some((x) => x.value === atual) ? atual : '';
+  }
 }
 $('f-ordem').value = le('f8.ordem') === 'az' ? 'az' : 'recente';
 $('f-ordem').onchange = () => { guarda('f8.ordem', $('f-ordem').value); dados && desenha(); };
 $('f-org').onchange = () => dados && desenha();
+$('m-org').onchange = () => dados && desenhaLicencas();
+$('m-situacao').onchange = () => dados && desenhaLicencas();
+$('lc-atualizar').onclick = () => carrega();
 function planoCurto(u) {
   const pl = u.plano;
   if (!pl) return '';
   if (pl.origem === 'organizacao') return `plano ${esc(nomePlano(pl.degrau))} (da organização)`;
-  return pl.degrau === 'gratis' ? 'só olhar' : `plano ${esc(nomePlano(pl.degrau))} (legado, por usuário)`;
+  return soOlhar(pl.degrau) ? 'só olhar (View)' : `plano ${esc(nomePlano(pl.degrau))} (legado, por usuário)`;
 }
-// cabeçalho do grupo = o cartão da organização: plano, teste, assentos, membros
+// cabeçalho do grupo em Pessoas: resumo da organização (plano, teste, assentos, membros); plano e teste se ajustam em Licenças
 function cabecalhoOrg(o, membros) {
-  if (!o) return `<tr class="grupo"><td colspan="7"><div class="grupo-cab"><strong>Sem organização</strong><span class="suave pequeno">${membros.length} usuário(s) · só olhar até entrar numa organização (contas antigas mantêm o plano legado por usuário)</span></div></td></tr>`;
+  if (!o) return `<tr class="grupo"><td colspan="7"><div class="grupo-cab"><strong>Sem organização</strong><span class="suave pequeno">${membros.length} pessoa(s) · só olhar até entrar numa organização (contas antigas mantêm o plano legado por usuário)</span></div></td></tr>`;
   const gestores = membros.filter((u) => u.papel === 'gestor').length;
-  const venc = o.teste_ate && hojeTeste() > String(o.teste_ate).slice(0, 10);
+  const convidada = o.plano === 'convidada';
   const plano = dados.planoDisponivel === true
-    ? `<label class="pequeno suave">plano <select class="mini" data-a="set_plano_organizacao" data-o="${esc(o.id)}">${(dados.planos || []).map((x) => `<option value="${esc(x.id)}"${o.plano === x.id ? ' selected' : ''}>${esc(x.nome)}</option>`).join('')}</select></label>`
-      + `<label class="pequeno suave">teste até <input type="date" class="mini" data-a="set_teste_organizacao" data-o="${esc(o.id)}" value="${esc(o.teste_ate ? String(o.teste_ate).slice(0, 10) : '')}"></label>`
-      + PRAZOS_TESTE.map((n) => `<button class="mini" data-a="teste_org_prazo" data-n="${n}" data-o="${esc(o.id)}" title="teste até hoje + ${n} dias, para todos os membros">+${n} dias</button>`).join('')
-      + (o.teste_ate ? `<button class="mini" data-a="teste_org_prazo" data-n="0" data-o="${esc(o.id)}" title="tira o prazo: todos os membros ficam com o plano sem prazo">sem teste</button>` : '')
-      + (venc ? '<span class="estado bloq">teste encerrado: todos só olham</span>' : o.teste_ate ? '<span class="estado pend">em teste</span>' : '')
+    ? chipPlano(o.plano) + (convidada ? '<span class="suave pequeno">grátis, sem prazo</span>' : testeDaOrg(o)) + ` <button type="button" class="link pequeno" data-ir="licencas">plano e teste…</button>`
     : '<span class="pequeno suave">plano por usuário (banco sem a migração F8)</span>';
   return `<tr class="grupo"><td colspan="7"><div class="grupo-cab"><strong>${esc(o.nome)}</strong>`
     + (o.perfil && dados.perfisDisponivel === true ? `<span class="chip nivel nivel-${esc(o.perfil.nivel)}" data-p="${esc(o.id)}" title="perfil da organização">${esc(nomeNivel(o.perfil.nivel))}</span>` : '')
-    + `<span class="suave pequeno">${membros.length} membro(s)${textoAssentos(o)}${dados.papeisDisponivel === true ? ` · Gestor ${gestores} de ${esc(o.assentos_gestor || 2)}` : ''}</span>${plano}</div></td></tr>`;
+    + `<span class="suave pequeno">${membros.length} membro(s)${convidada ? (o.limite_membros_convidada ? ` de ${esc(o.limite_membros_convidada)} (limite técnico)` : '') : textoAssentos(o) + (dados.papeisDisponivel === true ? ` · Gestor ${gestores} de ${esc(o.assentos_gestor || 2)}` : '')}</span>${plano}</div></td></tr>`;
 }
-// assentos do plano (D40 a–b): uso no cabeçalho do grupo; edição no cartão do perfil (ao lado dos assentos de Gestor)
+// assentos do plano (D40 a–b): uso no cabeçalho do grupo e na tabela de organizações; edição no cartão do perfil
 function textoAssentos(o) {
   if (dados.assentosDisponivel !== true || o.assentos === undefined) return '';
   const u = o.usados || { pagos: 0, leitura: 0 }, cheio = u.pagos >= o.assentos;
@@ -891,24 +1231,29 @@ function textoAssentos(o) {
 function preencheAssentosPlano(o) {
   $('p-f8-assentos').hidden = dados.assentosDisponivel !== true || o.assentos === undefined;
   if ($('p-f8-assentos').hidden) return;
+  const p = planoDe(o.plano);
   $('p-pagos').value = String(o.assentos); $('p-leitura').value = String(o.assentos_leitura); $('p-leitura-conta').checked = !!o.leitura_conta_assento;
+  $('p-pagos').min = String(p && p.minimo > 1 ? p.minimo : 1);
   const u = o.usados || { pagos: 0, leitura: 0 };
-  $('p-f8-uso').textContent = `${u.pagos} pago(s) e ${u.leitura} de Leitura em uso. Passar dos assentos: o app pede para falar com a equipe do StudioRP.`;
+  $('p-f8-uso').textContent = `${u.pagos} pago(s) e ${u.leitura} de Leitura em uso.${p && p.minimo > 1 ? ` ${p.nome}: mínimo ${p.minimo} assentos.` : p && p.assentos ? ` ${p.nome}: ${p.assentos} incluído(s); extra proporcional.` : ''} Passar dos assentos: o app pede para falar com a equipe do StudioRP.`;
 }
 $('p-f8-salvar').onclick = async () => {
   avisa('p-msg', '');
+  const o = orgDe($('p-org').value), p = o ? planoDe(o.plano) : null, n = Number($('p-pagos').value);
+  if (p && p.minimo > 1 && n < p.minimo) return avisa('p-msg', `${p.nome} exige pelo menos ${p.minimo} assentos pagos (D71). Para menos, mude o plano para Pro em Licenças.`);
   $('p-f8-salvar').disabled = true;
   try {
-    await chamaAdmin({ acao: 'set_assentos_organizacao', organizacao: $('p-org').value, assentos: Number($('p-pagos').value), assentos_leitura: Number($('p-leitura').value), leitura_conta_assento: $('p-leitura-conta').checked });
+    await chamaAdmin({ acao: 'set_assentos_organizacao', organizacao: $('p-org').value, assentos: n, assentos_leitura: Number($('p-leitura').value), leitura_conta_assento: $('p-leitura-conta').checked });
     await carrega(); avisa('p-msg', 'Assentos do plano salvos. Valem na hora para convites e novos membros.', 'ok');
-  } catch (err) { avisa('p-msg', err.message); }
+  } catch (err) { avisa('p-msg', explica(err)); }
   finally { $('p-f8-salvar').disabled = false; }
 };
 function desenha() {
-  const busca = $('f-busca').value.trim().toLowerCase(), filtro = $('f-org').value, ordem = $('f-ordem').value;
+  const busca = termoBusca(), filtro = $('f-org').value, ordem = $('f-ordem').value;
+  conta('n-pessoas', (dados.usuarios || []).length);
   const porNome = (a, b) => (a.nome || a.email).localeCompare(b.nome || b.email, 'pt-BR');
   const cmp = ordem === 'az' ? porNome : (a, b) => String(b.criado_em || '').localeCompare(String(a.criado_em || '')) || porNome(a, b);
-  const casa = (u) => !busca || (u.email + ' ' + u.nome).toLowerCase().includes(busca);
+  const casa = (u) => !busca || (u.email + ' ' + u.nome + ' ' + u.maquinas.map((m) => m.nome || '').join(' ')).toLowerCase().includes(busca);
   const grupos = [];
   for (const o of dados.organizacoes || []) {
     if (filtro && filtro !== o.id) continue;
@@ -922,97 +1267,140 @@ function desenha() {
     const todos = dados.usuarios.filter((u) => !orgDe(u.organizacao)), lista = todos.filter(casa).sort(cmp);
     if (lista.length || (!busca && filtro === '-')) grupos.push({ o: null, todos, lista });
   }
-  if (!grupos.length) { $('t-corpo').innerHTML = '<tr><td colspan="7" class="suave">Nenhum usuário.</td></tr>'; return; }
+  if (!grupos.length) { $('t-corpo').innerHTML = `<tr><td colspan="7" class="nada">${busca ? 'Ninguém casa com a busca.' : 'Nenhuma pessoa.'}</td></tr>`; return; }
   $('t-corpo').innerHTML = grupos.map((g) => cabecalhoOrg(g.o, g.todos)
-    + (g.lista.length ? g.lista.map(linhaUsuario).join('') : '<tr><td colspan="7" class="suave pequeno">Nenhum membro ainda (crie o usuário acima já nesta organização).</td></tr>')).join('');
+    + (g.lista.length ? g.lista.map(linhaUsuario).join('') : '<tr><td colspan="7" class="nada">Nenhum membro ainda (crie a pessoa acima já nesta organização).</td></tr>')).join('');
 }
 function linhaUsuario(u) {
   const agora = Date.now(), extras = u.recursos_extra || [];
-  const eds = u.edicoes.map((e) => `<span class="chip" title="${esc((e.recursos || []).join(', '))}">${esc(e.edicao)}<button title="Retirar edição" data-a="retirar_edicao" data-u="${esc(u.id)}" data-e="${esc(e.edicao)}">×</button></span>`).join('')
-      + `<button class="mini" data-a="liberar_edicao" data-u="${esc(u.id)}">+ edição</button>`
+  const temStudiorp = u.edicoes.some((e) => e.edicao === 'studiorp');
+  const vinculo =
       // N: organização (mudar aqui leva o usuário para o plano da outra organização) — vale na próxima renovação da licença do app
-      + `<br><label class="pequeno suave">organização <select class="mini" data-a="set_organizacao" data-u="${esc(u.id)}"><option value="">— nenhuma —</option>${(dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}"${u.organizacao === o.id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>`
+      `<label class="pequeno suave">organização <select class="mini" data-a="set_organizacao" data-u="${esc(u.id)}"><option value="">— nenhuma —</option>${(dados.organizacoes || []).map((o) => `<option value="${esc(o.id)}"${u.organizacao === o.id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')}</select></label>`
       // F6a (D38): papéis gestor · comercial · engenharia · leitura (lista do servidor); `comercial` é derivada do papel — sem a caixa
       + (u.organizacao && dados.membrosDisponivel !== false && dados.papeisDisponivel === true
-        ? ` <label class="pequeno suave" title="Gestor: catálogo, decisões e a equipe (papel, permissões, projetos) · Comercial: engenharia + valores e propostas · Engenharia: projeto, revisões, proposta técnica, composição de custo · Leitura: só olhar (visualizador 3D e medidas, nunca valores). As permissões finas (ver valores, ver custos, lista de preços, criar/encerrar projetos, projetos visíveis) o Gestor da organização ajusta no app.">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${(dados.papeis || []).map((p) => `<option value="${esc(p.id)}"${(u.papel || 'engenharia') === p.id ? ' selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></label>`
+        ? `<br><label class="pequeno suave" title="Gestor: catálogo, decisões e a equipe (papel, permissões, projetos) · Comercial: engenharia + valores e propostas · Engenharia: projeto, revisões, proposta técnica, composição de custo · Leitura: só olhar (visualizador 3D e medidas, nunca valores). As permissões finas (ver valores, ver custos, lista de preços, criar/encerrar projetos, projetos visíveis) o Gestor da organização ajusta no app.">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${(dados.papeis || []).map((p) => `<option value="${esc(p.id)}"${(u.papel || 'engenharia') === p.id ? ' selected' : ''}>${esc(p.nome)}</option>`).join('')}</select></label>`
           + (Object.keys(u.permissoes || {}).length || u.projetos_todos === false ? ` <span class="chip pequeno" title="${esc('ajustes do gestor: ' + Object.entries(u.permissoes || {}).map(([k, v]) => `${k}=${v ? 'sim' : 'não'}`).join(', ') + (u.projetos_todos === false ? ' · só alguns projetos' : ''))}">ajustado</span>` : '')
         : '')
       // A1: papel na organização (gestor define Estilos construtivos) e flag comercial — banco ainda sem a F6a
       + (u.organizacao && dados.membrosDisponivel !== false && dados.papeisDisponivel !== true
-        ? ` <label class="pequeno suave" title="gestor: define estilos construtivos e gerencia os membros · usuário: desenha · leitor (E2): gerência/diretoria — só vê o painel da obra, as revisões e as decisões, não edita nada">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${['gestor', 'usuario', 'leitor'].map((p) => `<option value="${p}"${(u.papel || 'usuario') === p ? ' selected' : ''}>${p === 'gestor' ? 'gestor' : p === 'leitor' ? 'leitor' : 'usuário'}</option>`).join('')}</select></label>`
+        ? `<br><label class="pequeno suave" title="gestor: define estilos construtivos e gerencia os membros · usuário: desenha · leitor (E2): gerência/diretoria — só vê o painel da obra, as revisões e as decisões, não edita nada">papel <select class="mini" data-a="set_papel" data-u="${esc(u.id)}">${['gestor', 'usuario', 'leitor'].map((p) => `<option value="${p}"${(u.papel || 'usuario') === p ? ' selected' : ''}>${p === 'gestor' ? 'gestor' : p === 'leitor' ? 'leitor' : 'usuário'}</option>`).join('')}</select></label>`
           + ` <label class="pequeno suave" style="display:inline" title="${u.papel === 'leitor' ? 'leitor não tem a flag comercial' : 'lê a lista de preços da organização (Fase C/D)'}"><input type="checkbox" style="width:auto" data-a="set_comercial" data-u="${esc(u.id)}" data-p="${esc(u.papel || 'usuario')}"${u.comercial ? ' checked' : ''}${u.papel === 'leitor' ? ' disabled' : ''}> comercial</label>`
         : '')
+      + `<br><span class="pequeno suave">${planoCurto(u)}</span>`
       // K/C LEGADO: sem organização, quem ainda tem plano por usuário (conta antiga) pode passar a só olhar; o teste legado continua editável
-      + (!orgDe(u.organizacao) && u.plano && u.plano.degrau !== 'gratis'
-        ? `<br><span class="pequeno suave">${planoCurto(u)}</span> <button class="mini" data-a="set_degrau" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="sem organização a conta só olha; para editar, vincule a uma organização">passar a só olhar</button>`
-          + `<br><label class="pequeno suave">teste até <input type="date" class="mini" style="width:auto;padding:1px 4px" data-a="set_teste" data-u="${esc(u.id)}" value="${esc(u.teste_ate ? String(u.teste_ate).slice(0, 10) : '')}"></label> `
-          + PRAZOS_TESTE.map((n) => `<button class="mini" data-a="teste_prazo" data-n="${n}" data-u="${esc(u.id)}" title="teste até hoje + ${n} dias">+${n} dias</button>`).join('')
-          + (u.teste_ate ? `<button class="mini" data-a="teste_prazo" data-n="0" data-u="${esc(u.id)}" title="tira o prazo: a licença volta a sair normalmente no plano legado">sem teste</button>` : '')
+      + (!orgDe(u.organizacao) && u.plano && !soOlhar(u.plano.degrau)
+        ? ` <button class="mini" type="button" data-a="set_degrau" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="sem organização a conta só olha; para editar, vincule a uma organização">passar a só olhar</button>`
+          + `<br><label class="pequeno suave">teste até <input type="date" class="mini" data-a="set_teste" data-u="${esc(u.id)}" value="${esc(u.teste_ate ? String(u.teste_ate).slice(0, 10) : '')}"></label> `
+          + PRAZOS_TESTE.map((n) => `<button class="mini" type="button" data-a="teste_prazo" data-n="${n}" data-u="${esc(u.id)}" title="teste até hoje + ${n} dias">+${n} dias</button>`).join('')
+          + (u.teste_ate ? `<button class="mini" type="button" data-a="teste_prazo" data-n="0" data-u="${esc(u.id)}" title="tira o prazo: a licença volta a sair normalmente no plano legado">sem teste</button>` : '')
         : '')
-      // avançado: extras (exceções por cima do plano) e a marcação "Equipe StudioRP" (recursos internos: Oficina de Blocos + publicar catálogo)
+      // avançado: edição do app (só studiorp; as antigas só se retiram), extras (exceções por cima do plano) e a marcação "Equipe StudioRP"
       + `<details class="avancado"><summary>avançado</summary>`
-      + `<div class="pequeno suave">Extras por cima do plano (exceções; valem na próxima renovação da licença):</div>`
+      + `<div class="pequeno suave">Edição do app: ${u.edicoes.length ? u.edicoes.map((e) => `<span class="chip" title="${esc((e.recursos || []).join(', ') || 'liberada em ' + data(e.liberada_em))}">${esc(e.edicao)}${e.edicao === 'studiorp' ? '' : ' (antiga)'}<button type="button" title="Retirar edição" data-a="retirar_edicao" data-u="${esc(u.id)}" data-e="${esc(e.edicao)}">×</button></span>`).join('') : '<span class="estado bloq">nenhuma — o app não emite licença</span> '}`
+      + (temStudiorp ? '' : `<button class="mini" type="button" data-a="liberar_edicao" data-u="${esc(u.id)}" title="libera a edição única studiorp (0.3.0+)">Liberar studiorp</button>`) + `</div>`
+      + `<div class="pequeno suave" style="margin-top:6px">Extras por cima do plano (exceções; valem na próxima renovação da licença):</div>`
       + EXTRAS_EDITAVEIS.map((r) => `<label class="pequeno"><input type="checkbox" data-extra="${esc(r)}"${extras.includes(r) ? ' checked' : ''}> ${esc(NOME_EXTRA[r] || r)}</label>`).join('')
-      + `<button class="mini" data-a="set_recursos" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}">Salvar extras</button>`
+      + `<button class="mini" type="button" data-a="set_recursos" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}">Salvar extras</button>`
       + `<div style="margin-top:6px">` + (ehEquipe(u)
-        ? `<button class="mini" data-a="equipe" data-v="tirar" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}" title="tem os recursos internos (${esc(RECURSOS_INTERNOS.join(', '))})">Tirar da Equipe StudioRP</button>`
-        : `<button class="mini" data-a="equipe" data-v="dar" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}" title="equipe do produto: recursos internos (${esc(RECURSOS_INTERNOS.join(', '))}) por cima do plano">Marcar como Equipe StudioRP</button>`)
+        ? `<button class="mini" type="button" data-a="equipe" data-v="tirar" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}" title="tem os recursos internos (${esc(RECURSOS_INTERNOS.join(', '))})">Tirar da Equipe StudioRP</button>`
+        : `<button class="mini" type="button" data-a="equipe" data-v="dar" data-u="${esc(u.id)}" data-r="${esc(extras.join(', '))}" title="equipe do produto: recursos internos (${esc(RECURSOS_INTERNOS.join(', '))}) por cima do plano">Marcar como Equipe StudioRP</button>`)
       + `</div></details>`;
   const venc = u.licenca_ate ? (Date.parse(u.licenca_ate) < agora ? ' <span class="estado bloq">(vencida)</span>' : '') : '';
-  const linhaU = `<tr>
+  const maqs = u.maquinas.length ? `<br><button type="button" class="link pequeno" data-ir="licencas" title="computadores desta pessoa, na aba Licenças">${u.maquinas.length} computador(es)${u.maquinas.some((m) => m.bloqueada) ? ' · bloqueio' : ''}</button>` : '<br><span class="suave pequeno">nenhum computador</span>';
+  return `<tr>
       <td><strong>${esc(u.nome || '—')}</strong>${u.admin ? ' <span class="chip">admin</span>' : ''}${ehEquipe(u) ? ' <span class="chip equipe" title="recursos internos: Oficina de Blocos e publicar catálogo">Equipe StudioRP</span>' : ''}<br><span class="suave pequeno">${esc(u.email)}</span><br><span class="suave pequeno">criado ${data(u.criado_em)}</span></td>
-      <td>${situacao(u)}${situacaoTeste(u)}<br><span class="pequeno suave">${planoCurto(u)}</span></td>
-      <td>${eds}</td>
+      <td>${situacao(u)}${situacaoTeste(u)}</td>
+      <td>${vinculo}</td>
       <td class="pequeno">${dataHora(u.ultimo_login)}</td>
-      <td class="pequeno">${data(u.licenca_ate)}${venc}</td>
+      <td class="pequeno">${data(u.licenca_ate)}${venc}${maqs}</td>
       <td class="pequeno">${esc(u.termo_aceito || '—')}${u.termo_aceito_em ? '<br><span class="suave">' + data(u.termo_aceito_em) + '</span>' : ''}</td>
-      <td><div class="acoes">
-        <button class="mini" data-a="renomear_usuario" data-u="${esc(u.id)}">Renomear</button>
-        <button class="mini" data-a="redefinir_senha" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="Gera uma nova senha provisória; o app pede para trocar no próximo login">Redefinir senha</button>
-        <button class="mini ${u.bloqueado ? '' : 'perigo'}" data-a="bloquear_usuario" data-u="${esc(u.id)}" data-v="${u.bloqueado ? 'false' : 'true'}">${u.bloqueado ? 'Desbloquear' : 'Bloquear'}</button>
-        ${u.admin ? '' : `<button class="mini perigo" data-a="excluir_usuario" data-u="${esc(u.id)}" data-email="${esc(u.email)}">Excluir</button>`}
+      <td class="acoes-col"><div class="acoes">
+        <button class="mini" type="button" data-a="renomear_usuario" data-u="${esc(u.id)}" data-nome="${esc(u.nome || '')}">Renomear</button>
+        <button class="mini" type="button" data-a="redefinir_senha" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="Gera uma nova senha provisória; o app pede para trocar no próximo login">Redefinir senha</button>
+        <button class="mini ${u.bloqueado ? '' : 'perigo'}" type="button" data-a="bloquear_usuario" data-u="${esc(u.id)}" data-v="${u.bloqueado ? 'false' : 'true'}">${u.bloqueado ? 'Desbloquear' : 'Bloquear'}</button>
+        ${u.admin ? '' : `<button class="mini perigo" type="button" data-a="excluir_usuario" data-u="${esc(u.id)}" data-email="${esc(u.email)}">Excluir</button>`}
       </div></td></tr>`;
-  const linhasM = u.maquinas.map((m) => `<tr class="maquina">
-      <td>↳ ${esc(m.nome || 'sem nome')}<br><span class="suave pequeno" title="${esc(m.hash)}">${esc(m.hash.slice(0, 12))}…</span></td>
-      <td>${m.bloqueada ? '<span class="estado bloq">Bloqueado</span>' : '<span class="estado ok">Liberado</span>'}</td>
-      <td class="pequeno" title="versão do app vista por último (no último pedido de licença deste computador)">app ${esc(m.versao_app || '?')}${/-beta\b/.test(m.versao_app || '') ? ' <span class="chip">beta</span>' : ''}</td>
-      <td class="pequeno">visto ${dataHora(m.ultima_vez)}</td>
-      <td class="pequeno">${data(m.ultima_licenca && m.ultima_licenca.expira)}</td>
-      <td class="pequeno suave">desde ${data(m.criada_em)}</td>
-      <td><div class="acoes">
-        <button class="mini ${m.bloqueada ? '' : 'perigo'}" data-a="bloquear_maquina" data-m="${esc(m.id)}" data-v="${m.bloqueada ? 'false' : 'true'}">${m.bloqueada ? 'Desbloquear' : 'Bloquear'}</button>
-        <button class="mini" data-a="remover_maquina" data-m="${esc(m.id)}" title="Libera a vaga; se o computador voltar, entra como novo">Remover</button>
-      </div></td></tr>`).join('');
-  return linhaU + linhasM;
 }
-// plano e teste da organização (cabeçalho do grupo) — gravam na hora, com confirmação na caixa própria
-$('t-corpo').addEventListener('change', async (ev) => {
-  const el = ev.target.closest('[data-a="set_plano_organizacao"], [data-a="set_teste_organizacao"]');
+// ───── Licenças: plano e teste por organização (tabela) e computadores com licença (todas as pessoas)
+function desenhaLicencas() {
+  const orgs = dados.organizacoes || [];
+  $('lc-versao').textContent = `versão mínima do app: ${dados.configEfetiva.minVersao || '—'} (ajuste em Operação)`;
+  const lista = orgs.filter((o) => casaTexto(o.nome, nomePlano(o.plano)));
+  $('lc-corpo').innerHTML = dados.planoDisponivel !== true ? '<tr><td colspan="5" class="nada">Plano por usuário (banco sem a migração F8): ajuste na linha de cada pessoa.</td></tr>'
+    : lista.length ? lista.map((o) => {
+      const n = membrosDe(o.id).length, venc = o.teste_ate && hojeTeste() > String(o.teste_ate).slice(0, 10);
+      // F031-A (D50): a Convidada é grátis e SEM prazo — nada de teste; limite técnico de membros e o botão para virar plano Pro
+      const convidada = o.plano === 'convidada';
+      return `<tr data-org="${esc(o.id)}"><td><strong>${esc(o.nome)}</strong><br><span class="suave pequeno">${n} membro(s)</span></td>
+        <td><select class="mini" data-a="set_plano_organizacao" data-o="${esc(o.id)}" aria-label="plano">${opcoesPlano(o.plano)}</select></td>
+        <td>${convidada
+          ? `<span class="estado pend" title="fornecedor que só responde convites: cota de graça, sem prazo; projeto próprio, lista de preços e catálogo são do plano Pro">Convidada · grátis, sem prazo</span>`
+            + (dados.convidadaDisponivel === true ? `<br><label class="pequeno suave">limite técnico de membros <input type="number" class="mini" min="1" max="50" step="1" data-a="set_limite_convidada" data-o="${esc(o.id)}" value="${esc(o.limite_membros_convidada ?? 5)}" title="contra abuso, não é cobrança; passar do limite: o app pede para falar com a equipe do StudioRP (F8003)"></label>` : '')
+          : `<div class="linha compacta"><input type="date" class="mini" data-a="set_teste_organizacao" data-o="${esc(o.id)}" value="${esc(o.teste_ate ? String(o.teste_ate).slice(0, 10) : '')}" aria-label="teste até">`
+            + PRAZOS_TESTE.map((d) => `<button class="mini" type="button" data-a="teste_org_prazo" data-n="${d}" data-o="${esc(o.id)}" title="teste até hoje + ${d} dias, para todos os membros">+${d} dias</button>`).join('')
+            + (o.teste_ate ? `<button class="mini" type="button" data-a="teste_org_prazo" data-n="0" data-o="${esc(o.id)}" title="tira o prazo: todos os membros ficam com o plano sem prazo">sem teste</button>` : '') + '</div>'}</td>
+        <td class="pequeno">${convidada ? `<button class="mini" type="button" data-a="converter_fornecedor" data-o="${esc(o.id)}" title="passa a organização ao plano Pro: projeto próprio, lista de preços, catálogo; os assentos do plano passam a valer">Converter em plano Pro</button>`
+          : venc ? '<span class="estado bloq">teste encerrado: todos só olham</span>' : o.teste_ate ? '<span class="estado pend">em teste</span>' : '<span class="estado ok">ativa</span>'}</td>
+        <td class="pequeno">${convidada ? (o.limite_membros_convidada ? `${n} de ${esc(o.limite_membros_convidada)} (limite técnico)` : '—') : (textoAssentos(o).replace(/^ · /, '') || '—')} <button type="button" class="link pequeno" data-p="${esc(o.id)}">ajustar…</button></td></tr>`;
+    }).join('') : `<tr><td colspan="5" class="nada">${orgs.length ? 'Nenhuma organização casa com a busca.' : 'Nenhuma organização.'}</td></tr>`;
+  // computadores (todas as pessoas), com filtro por organização e situação
+  const filtroOrg = $('m-org').value, sit = $('m-situacao').value, agora = Date.now();
+  const linhas = [];
+  for (const u of dados.usuarios || []) {
+    if (filtroOrg === '-' ? orgDe(u.organizacao) : filtroOrg && u.organizacao !== filtroOrg) continue;
+    for (const m of u.maquinas) {
+      const expira = m.ultima_licenca && m.ultima_licenca.expira, vencida = expira ? Date.parse(expira) < agora : false, beta = /-beta\b/.test(m.versao_app || '');
+      if (sit === 'vencida' && !vencida) continue; if (sit === 'bloqueada' && !m.bloqueada) continue; if (sit === 'beta' && !beta) continue;
+      if (!casaTexto(u.nome, u.email, m.nome, m.hash, (orgDe(u.organizacao) || {}).nome)) continue;
+      linhas.push({ u, m, expira, vencida, beta });
+    }
+  }
+  conta('n-licencas', (dados.usuarios || []).reduce((s, u) => s + u.maquinas.length, 0));
+  linhas.sort((a, b) => String(b.m.ultima_vez || '').localeCompare(String(a.m.ultima_vez || '')));
+  $('m-corpo').innerHTML = linhas.length ? linhas.map(({ u, m, expira, vencida, beta }) => `<tr class="maquina" data-u="${esc(u.id)}">
+      <td><strong>${esc(u.nome || '—')}</strong><br><span class="suave pequeno">${esc(u.email)}${orgDe(u.organizacao) ? ' · ' + esc(orgDe(u.organizacao).nome) : ''}</span></td>
+      <td>${esc(m.nome || 'sem nome')}<br><span class="suave pequeno mono" title="${esc(m.hash)}">${esc(m.hash.slice(0, 12))}…</span><br><span class="suave pequeno">desde ${data(m.criada_em)}</span></td>
+      <td class="pequeno" title="versão do app vista por último (no último pedido de licença deste computador)">${esc(m.versao_app || '?')}${beta ? ' <span class="chip">beta</span>' : ''}</td>
+      <td class="pequeno">${dataHora(m.ultima_vez)}</td>
+      <td class="pequeno">${data(expira)}${vencida ? ' <span class="estado bloq">(vencida)</span>' : ''}</td>
+      <td>${m.bloqueada ? '<span class="estado bloq">Bloqueado</span>' : u.bloqueado ? '<span class="estado bloq" title="a pessoa está bloqueada">pessoa bloqueada</span>' : '<span class="estado ok">Liberado</span>'}</td>
+      <td class="acoes-col"><div class="acoes">
+        <button class="mini ${m.bloqueada ? '' : 'perigo'}" type="button" data-a="bloquear_maquina" data-m="${esc(m.id)}" data-v="${m.bloqueada ? 'false' : 'true'}">${m.bloqueada ? 'Desbloquear' : 'Bloquear'}</button>
+        <button class="mini" type="button" data-a="remover_maquina" data-m="${esc(m.id)}" data-nome="${esc(m.nome || 'sem nome')}" title="Libera a vaga; se o computador voltar, entra como novo">Remover</button>
+      </div></td></tr>`).join('') : '<tr><td colspan="7" class="nada">Nenhum computador com licença casa com o filtro.</td></tr>';
+}
+// plano, teste e limite da organização (tabela de Licenças) — gravam na hora, com confirmação na caixa própria
+$('lc-corpo').addEventListener('change', async (ev) => {
+  const el = ev.target.closest('[data-a="set_plano_organizacao"], [data-a="set_teste_organizacao"], [data-a="set_limite_convidada"]');
   if (!el) return;
-  const o = orgDe(el.dataset.o), n = dados.usuarios.filter((u) => u.organizacao === el.dataset.o).length;
-  const plano = el.dataset.a === 'set_plano_organizacao';
-  const texto = plano ? `Mudar o plano de “${o.nome}” para ${nomePlano(el.value)}? Vale para os ${n} membro(s) na próxima renovação da licença.`
+  const o = orgDe(el.dataset.o), n = membrosDe(el.dataset.o).length;
+  const plano = el.dataset.a === 'set_plano_organizacao', limite = el.dataset.a === 'set_limite_convidada';   // F031-A: limite técnico da Convidada
+  const texto = limite ? `Limite técnico de “${o.nome}” (Convidada) = ${el.value} membro(s)? Não é cobrança: além disso o app pede para falar com a equipe.`
+    : plano ? `Mudar o plano de “${o.nome}” para ${nomePlano(el.value)}? Vale para os ${n} membro(s) na próxima renovação da licença.${planoDe(el.value) && planoDe(el.value).minimo > 1 ? ` ${nomePlano(el.value)} exige pelo menos ${planoDe(el.value).minimo} assentos: ajuste em seguida.` : ''}`
     : el.value ? `Teste grátis de “${o.nome}” até ${dataTeste(el.value)}? Vale para os ${n} membro(s); vencido, todos só olham.` : `Tirar o prazo de teste de “${o.nome}”? Os ${n} membro(s) ficam com o plano sem prazo.`;
-  if (!(await caixa(texto, 'Gravar'))) return desenha();
+  if (!(await caixa(texto, 'Gravar'))) return desenhaLicencas();
   el.disabled = true;
   try {
-    await chamaAdmin(plano ? { acao: 'set_plano_organizacao', organizacao: o.id, plano: el.value } : { acao: 'set_teste_organizacao', organizacao: o.id, teste_ate: el.value || null });
-    await carrega(); avisa('t-msg', `“${o.nome}” atualizada. Vale na próxima renovação da licença dos membros.`, 'ok');
-  } catch (err) { avisa('t-msg', err.message); el.disabled = false; }
+    await chamaAdmin(limite ? { acao: 'set_limite_convidada', organizacao: o.id, limite: Number(el.value) } : plano ? { acao: 'set_plano_organizacao', organizacao: o.id, plano: el.value } : { acao: 'set_teste_organizacao', organizacao: o.id, teste_ate: el.value || null });
+    await carrega(); avisa('lc-msg', `“${o.nome}” atualizada. Vale na próxima renovação da licença dos membros.`, 'ok');
+  } catch (err) { avisa('lc-msg', explica(err)); el.disabled = false; }
 });
-$('t-corpo').addEventListener('click', async (ev) => {
-  const nivel = ev.target.closest('[data-p]');   // selo do nível no cabeçalho do grupo → abre o perfil da organização
-  if (nivel) { $('p-org').value = nivel.dataset.p; avisa('p-msg', ''); preenchePerfil(); $('p-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+async function acaoF8(ev, msgId) {
   const b = ev.target.closest('button[data-a]');
   if (!b || !ACOES_F8.has(b.dataset.a)) return;
   const a = b.dataset.a, corpo = {};
-  if (a === 'teste_org_prazo') {   // "+60 dias" / "+90 dias" a partir de hoje; "sem teste" = null — para a organização inteira
+  if (a === 'converter_fornecedor') {   // F031-A (D50) + D68: Convidada → plano Pro (sem prazo; a equipe põe teste/assentos depois se quiser)
+    const o = orgDe(b.dataset.o), n = membrosDe(o.id).length;
+    if (!(await caixa(`Converter “${o.nome}” de Convidada em plano Pro? Os ${n} membro(s) ganham projeto próprio, lista de preços e catálogo na próxima renovação da licença; os assentos do plano passam a valer.`, 'Converter'))) return;
+    Object.assign(corpo, { acao: 'set_plano_organizacao', organizacao: o.id, plano: 'pro' });
+  } else if (a === 'teste_org_prazo') {   // "+60 dias" / "+90 dias" a partir de hoje; "sem teste" = null — para a organização inteira
     const n = Number(b.dataset.n) || 0, o = orgDe(b.dataset.o);
     if (!n && !(await caixa(`Tirar o prazo de teste de “${o.nome}”? Todos os membros ficam com o plano sem prazo.`, 'Tirar o prazo'))) return;
     Object.assign(corpo, { acao: 'set_teste_organizacao', organizacao: o.id, teste_ate: n ? somaDiasTeste(hojeTeste(), n) : null });
   } else if (a === 'set_degrau') {   // legado, só sem organização: a conta passa a só olhar
     if (!(await caixa(`Passar ${b.dataset.email} a só olhar? Para editar de novo, vincule a uma organização.`, 'Passar a só olhar'))) return;
-    Object.assign(corpo, { acao: 'set_degrau', usuario: b.dataset.u, degrau: 'gratis' });
+    Object.assign(corpo, { acao: 'set_degrau', usuario: b.dataset.u, degrau: 'view' });
   } else {
     const atuais = (b.dataset.r || '').split(',').map((x) => x.trim()).filter(Boolean);
     corpo.usuario = b.dataset.u;
@@ -1027,18 +1415,20 @@ $('t-corpo').addEventListener('click', async (ev) => {
     }
   }
   b.disabled = true;
-  try { await chamaAdmin(corpo); await carrega(); avisa('t-msg', 'Gravado. Vale na próxima renovação da licença.', 'ok'); }
-  catch (e) { avisa('t-msg', e.message); b.disabled = false; }
-});
+  try { await chamaAdmin(corpo); await carrega(); avisa(msgId, 'Gravado. Vale na próxima renovação da licença.', 'ok'); }
+  catch (e) { avisa(msgId, explica(e)); b.disabled = false; }
+}
+$('t-corpo').addEventListener('click', (ev) => acaoF8(ev, 't-msg'));
+$('lc-corpo').addEventListener('click', (ev) => acaoF8(ev, 'lc-msg'));
 // ───── fim F8
 
 // teste legado (sem organização), papel, organização — gravam na hora
-$('t-corpo').onchange = async (ev) => {
+$('t-corpo').addEventListener('change', async (ev) => {
   const tst = ev.target.closest('input[data-a="set_teste"]');   // C: teste grátis — data do último dia (vazio = sem teste)
   if (tst) {
     tst.disabled = true;
     try { await chamaAdmin({ acao: 'set_teste', usuario: tst.dataset.u, teste_ate: tst.value || null }); await carrega(); }
-    catch (err) { avisa('t-msg', err.message); tst.disabled = false; }
+    catch (err) { avisa('t-msg', explica(err)); tst.disabled = false; }
     return;
   }
   const pap = ev.target.closest('[data-a="set_papel"], [data-a="set_comercial"]');   // A1/F6a: papel (e a flag comercial antiga) na organização
@@ -1046,18 +1436,19 @@ $('t-corpo').onchange = async (ev) => {
     pap.disabled = true;
     const corpo = pap.dataset.a === 'set_papel' ? { acao: 'set_papel', usuario: pap.dataset.u, papel: pap.value } : { acao: 'set_papel', usuario: pap.dataset.u, papel: pap.dataset.p, comercial: pap.checked };
     try { await chamaAdmin(corpo); await carrega(); }
-    catch (err) { avisa('t-msg', err.message); pap.disabled = false; }
+    catch (err) { avisa('t-msg', explica(err)); pap.disabled = false; }
     return;
   }
   const org = ev.target.closest('select[data-a="set_organizacao"]');   // N: vínculo usuário → organização
   if (org) {
     org.disabled = true;
     try { await chamaAdmin({ acao: 'set_organizacao', usuario: org.dataset.u, organizacao: org.value || null }); await carrega(); }
-    catch (err) { avisa('t-msg', err.message); org.disabled = false; }
+    catch (err) { avisa('t-msg', explica(err)); org.disabled = false; }
     return;
   }
-};
-$('t-corpo').onclick = async (ev) => {
+});
+// ações por pessoa e por computador (Pessoas e Licenças): confirmações e textos pedidos pela caixa própria
+async function acaoGeral(ev, msgId) {
   const b = ev.target.closest('button[data-a]');
   if (!b || ACOES_F8.has(b.dataset.a)) return;   // F8: plano/teste da organização, legado, extras e Equipe StudioRP no bloco F8
   const a = b.dataset.a, corpo = { acao: a };
@@ -1065,53 +1456,57 @@ $('t-corpo').onclick = async (ev) => {
   if (b.dataset.m) corpo.maquina = b.dataset.m;
   if (a === 'bloquear_usuario') corpo.bloqueado = b.dataset.v === 'true';
   if (a === 'bloquear_maquina') corpo.bloqueada = b.dataset.v === 'true';
-  if (a === 'retirar_edicao') { if (!confirm(`Retirar a edição "${b.dataset.e}"? O app para ao vencer a licença atual.`)) return; corpo.edicao = b.dataset.e; }
-  if (a === 'liberar_edicao') { const e = prompt('Edição a liberar (studiorp; antigas: treo, rj, roboflexx, vinter, projectmaq):', 'studiorp'); if (!e) return; corpo.edicao = e.trim(); }
-  if (a === 'renomear_usuario') { const n = prompt('Nome:'); if (!n) return; corpo.nome = n.trim(); }
+  if (a === 'retirar_edicao') { if (!(await caixa(`Retirar a edição “${b.dataset.e}” desta pessoa? O app para ao vencer a licença atual.`, 'Retirar'))) return; corpo.edicao = b.dataset.e; }
+  if (a === 'liberar_edicao') corpo.edicao = 'studiorp';   // edição única da 0.3.0 (as antigas só se retiram)
+  if (a === 'renomear_usuario') { const n = await caixa('Nome da pessoa (como aparece no app e nos carimbos):', 'Salvar', { campo: { valor: b.dataset.nome || '', placeholder: 'Nome completo' } }); if (n === false) return; if (!n) return avisa(msgId, 'Digite o nome.'); corpo.nome = n; }
   if (a === 'teste_prazo') {   // C: "+60 dias" / "+90 dias" a partir de hoje; "sem teste" = null
     const n = Number(b.dataset.n) || 0;
     corpo.acao = 'set_teste';
     corpo.teste_ate = n ? somaDiasTeste(hojeTeste(), n) : null;
-    if (!n && !confirm('Tirar o prazo de teste deste usuário? A licença volta a sair normalmente no plano dele, na próxima renovação.')) return;
+    if (!n && !(await caixa('Tirar o prazo de teste desta pessoa? A licença volta a sair normalmente no plano dela, na próxima renovação.', 'Tirar o prazo'))) return;
   }
-  if (a === 'redefinir_senha' && !confirm(`Gerar uma nova senha provisória para ${b.dataset.email}?\nA senha atual deixa de valer. A licença já emitida continua até vencer; no próximo login o app pede para criar uma senha nova.`)) return;
-  if (a === 'remover_maquina' && !confirm('Remover este computador da lista? Libera a vaga; a licença dele vale até vencer.')) return;
+  if (a === 'redefinir_senha' && !(await caixa(`Gerar uma nova senha provisória para ${b.dataset.email}?\nA senha atual deixa de valer. A licença já emitida continua até vencer; no próximo login o app pede para criar uma senha nova.`, 'Gerar senha'))) return;
+  if (a === 'remover_maquina' && !(await caixa(`Remover o computador “${b.dataset.nome}” da lista? Libera a vaga; a licença dele vale até vencer.`, 'Remover'))) return;
   if (a === 'excluir_usuario') {
-    const c = prompt(`Excluir DEFINITIVAMENTE a conta e todos os dados (perfil, computadores, histórico)?\nPara confirmar, digite o e-mail: ${b.dataset.email}`);
-    if (!c) return; corpo.confirmacao = c.trim();
+    const c = await caixa(`Excluir DEFINITIVAMENTE a conta e todos os dados (perfil, computadores, histórico)?\nPara confirmar, digite o e-mail: ${b.dataset.email}`, 'Excluir', { campo: { placeholder: b.dataset.email } });
+    if (c === false) return;
+    if (c !== b.dataset.email) return avisa(msgId, 'Não excluído: o e-mail digitado não confere.');
+    corpo.confirmacao = c;
   }
   b.disabled = true;
   try {
     const r = await chamaAdmin(corpo);
-    if (a === 'redefinir_senha') mostraSenha('Nova senha provisória de ' + b.dataset.email + ':', r.senha);
+    if (a === 'redefinir_senha') { abre('pessoas'); mostraSenha('Nova senha provisória de ' + b.dataset.email + ':', r.senha); }
     await carrega();
-  } catch (e) { avisa('t-msg', e.message); b.disabled = false; }
-};
+  } catch (e) { avisa(msgId, explica(e)); b.disabled = false; }
+}
+$('t-corpo').addEventListener('click', (ev) => acaoGeral(ev, 't-msg'));
+$('m-corpo').addEventListener('click', (ev) => acaoGeral(ev, 'm-msg'));
 
 // ───── caixa da senha provisória (aparece UMA vez; nada fica guardado no navegador)
 function mostraSenha(titulo, senha) {
   $('p-titulo').textContent = titulo;
   $('p-senha').value = senha || '';
-  avisa('p-msg', '');
+  avisa('p-msg-senha', '');
   $('p-caixa').hidden = false;
   $('p-caixa').scrollIntoView({ behavior: 'smooth', block: 'center' });
   $('p-senha').select();
 }
 $('p-copiar').onclick = async () => {
   const v = $('p-senha').value;
-  try { await navigator.clipboard.writeText(v); avisa('p-msg', 'Copiada.', 'ok'); }
-  catch { $('p-senha').select(); try { document.execCommand('copy'); avisa('p-msg', 'Copiada.', 'ok'); } catch { avisa('p-msg', 'Não deu para copiar sozinho: selecione e copie (Cmd/Ctrl+C).'); } }
+  try { await navigator.clipboard.writeText(v); avisa('p-msg-senha', 'Copiada.', 'ok'); }
+  catch { $('p-senha').select(); try { document.execCommand('copy'); avisa('p-msg-senha', 'Copiada.', 'ok'); } catch { avisa('p-msg-senha', 'Não deu para copiar sozinho: selecione e copie (Cmd/Ctrl+C).'); } }
 };
 $('p-fechar').onclick = () => { $('p-senha').value = ''; $('p-caixa').hidden = true; };
 
+// nova pessoa: edição única `studiorp` (sem seletor; as antigas só existem em contas legadas)
 function corpoNovo(acao) {
-  const corpo = { acao, email: $('i-email').value.trim(), nome: $('i-nome').value.trim(), edicao: $('i-edicao').value.trim() };
-  if (!corpo.email || !$('i-email').checkValidity()) { avisa('i-msg', 'Digite um e-mail válido.'); return null; }
-  if (!corpo.edicao || !$('i-edicao').checkValidity()) { avisa('i-msg', 'Digite a edição (ex.: studiorp).'); return null; }
+  const corpo = { acao, email: $('i-email').value.trim(), nome: $('i-nome').value.trim(), edicao: 'studiorp' };
+  if (!corpo.email || !$('i-email').checkValidity()) { avisa('i-msg', 'Digite um e-mail válido (ex.: nome@empresa.com.br).'); return null; }
   // F8: organização obrigatória (ou "sem organização" explícito = só olhar) e papel; o plano e o teste vêm da organização
   const org = $('i-org').value;
   if (!org) { avisa('i-msg', 'Escolha a organização (ou “Sem organização”).'); return null; }
-  if (org === '-') { if (acao === 'criar') corpo.organizacao = null; else corpo.degrau = 'gratis'; }
+  if (org === '-') { if (acao === 'criar') corpo.organizacao = null; else corpo.degrau = 'view'; }
   else if (acao === 'criar') { corpo.organizacao = org; if (!$('i-papel').disabled && $('i-papel').value) corpo.papel = $('i-papel').value; }
   else { avisa('i-msg', 'O convite por e-mail ainda não vincula organização: use “Criar usuário”.'); return null; }
   return corpo;
@@ -1127,12 +1522,11 @@ $('i-form').onsubmit = async (e) => {
   $('i-criar').disabled = true;
   try {
     const r = await chamaAdmin(corpo);
-    guarda('s1.edicao', corpo.edicao);
     avisa('i-msg', `Usuário ${corpo.email} criado` + (r.organizacao ? ` em ${(orgDe(r.organizacao) || { nome: 'organização' }).nome} (${nomePapel(r.papel)}).` : ' sem organização (só olhar).'), 'ok');
     mostraSenha('Senha provisória de ' + corpo.email + ':', r.senha);
     $('i-email').value = ''; $('i-nome').value = ''; $('i-senha').value = '';
     carrega();
-  } catch (err) { avisa('i-msg', err.message); }
+  } catch (err) { avisa('i-msg', explica(err)); }
   $('i-criar').disabled = false;
 };
 // secundário: convite por e-mail (só com SMTP próprio)
@@ -1142,32 +1536,49 @@ $('i-convidar').onclick = async () => {
   if (hospedado) corpo.redirectTo = location.origin + location.pathname;
   try {
     await chamaAdmin(corpo);
-    guarda('s1.edicao', corpo.edicao);
     avisa('i-msg', `Convite enviado para ${corpo.email}. Se não chegar, o SMTP próprio não está configurado — use "Criar usuário".`, 'ok');
     $('i-email').value = ''; $('i-nome').value = '';
     carrega();
-  } catch (err) { avisa('i-msg', err.message); }
+  } catch (err) { avisa('i-msg', explica(err)); }
 };
 
 /** U1: link de instalação gravado (linha LINK_INSTALAR da config; '' = sem) */
 const linkInstalarAtual = () => ((dados && dados.config || []).find((l) => l.chave === 'LINK_INSTALAR') || { valor: '' }).valor;
 $('g-salvar').onclick = async () => {
   avisa('g-msg', '');
+  const dias = Number($('g-dias').value), max = Number($('g-max').value), min = $('g-min').value.trim(), link = $('g-link').value.trim();
+  if (!(dias >= 1 && dias <= 90)) return avisa('g-msg', 'Dias offline: de 1 a 90.');
+  if (!(max >= 1 && max <= 50)) return avisa('g-msg', 'Máx. computadores por pessoa: de 1 a 50.');
+  if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(min)) return avisa('g-msg', 'Versão mínima no formato maior.menor.correção (ex.: 0.3.1).');
+  if (link && !/^https:\/\//.test(link)) return avisa('g-msg', 'O link de instalar precisa começar com https://.');
+  $('g-salvar').disabled = true;
   try {
-    await chamaAdmin({ acao: 'ajustar_config', chave: 'DIAS_OFFLINE', valor: $('g-dias').value });
-    await chamaAdmin({ acao: 'ajustar_config', chave: 'MAX_MAQUINAS', valor: $('g-max').value });
-    await chamaAdmin({ acao: 'ajustar_config', chave: 'MIN_VERSAO', valor: $('g-min').value });
+    await chamaAdmin({ acao: 'ajustar_config', chave: 'DIAS_OFFLINE', valor: String(dias) });
+    await chamaAdmin({ acao: 'ajustar_config', chave: 'MAX_MAQUINAS', valor: String(max) });
+    await chamaAdmin({ acao: 'ajustar_config', chave: 'MIN_VERSAO', valor: min });
     // U1: só grava o link quando mudou (banco sem a migração u1_link_instalar recusa a chave nova)
-    if ($('g-link').value.trim() !== linkInstalarAtual()) await chamaAdmin({ acao: 'ajustar_config', chave: 'LINK_INSTALAR', valor: $('g-link').value.trim() });
-    avisa('g-msg', 'Regras salvas.', 'ok');
+    if (link !== linkInstalarAtual()) await chamaAdmin({ acao: 'ajustar_config', chave: 'LINK_INSTALAR', valor: link });
+    avisa('g-msg', 'Regras salvas. Valem na próxima renovação da licença de cada computador.', 'ok');
     carrega();
-  } catch (e) { avisa('g-msg', e.message); }
+  } catch (e) { avisa('g-msg', explica(e)); }
+  $('g-salvar').disabled = false;
 };
-$('f-busca').oninput = () => dados && desenha();
+// ───── Operação: resumo e conexão
+function desenhaOperacao() {
+  const us = dados.usuarios || [], orgs = dados.organizacoes || [];
+  const maqs = us.reduce((s, u) => s + u.maquinas.length, 0), bloq = us.filter((u) => u.bloqueado).length;
+  const itens = [[orgs.length, 'organizações'], [us.length, 'pessoas'], [maqs, 'computadores com licença'], [bloq, 'pessoas bloqueadas'], [us.filter((u) => u.admin).length, 'administradores'], [dados.configEfetiva.minVersao || '—', 'versão mínima do app']];
+  $('op-resumo').innerHTML = itens.map(([n, t]) => `<div><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join('');
+  let host = url; try { host = new URL(url).host; } catch {}
+  $('op-conexao').textContent = `Projeto ${host} · funções admin e licenca · painel ${hospedado ? 'hospedado em ' + location.host : 'aberto como arquivo local'} · dados lidos ${carregadoEm ? carregadoEm.toLocaleTimeString('pt-BR') : '—'}.`;
+}
+// busca global: redesenha o que está carregado (sem nova chamada ao servidor)
+$('f-busca').oninput = () => { if (!dados) return; desenhaOrgs(); desenhaPerfis(); desenha(); desenhaLicencas(); desenhaPedidos(); carregaCatalogosLocal(); };
+function carregaCatalogosLocal() { if (!$('cf-cartao').hidden && catalogosFab.length) carregaCatalogos(); if (!$('vt-cartao').hidden) carregaVitrine(); }
 $('f-atualizar').onclick = carrega;
 
 async function inicia() {
-  if (!window.supabase) { mostra('v-conexao'); return avisa('c-msg', 'Não carregou a biblioteca do Supabase (sem internet?).'); }
+  if (!window.supabase) { mostra('v-conexao'); return avisa('c-msg', 'Não carregou a biblioteca do Supabase (sem internet?). Recarregue a página com a internet ligada.'); }
   if (!conecta()) return;
   let recuperacao = veioDeLink;
   sb.auth.onAuthStateChange((evento) => { if (evento === 'PASSWORD_RECOVERY') { recuperacao = true; telaSenha(); } });
