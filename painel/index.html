@@ -97,6 +97,10 @@
   .msg.erro { display: block; color: var(--perigo); background: var(--perigo-suave); border: 1px solid var(--perigo); }
   .msg.ok { display: block; color: var(--ok); background: var(--ok-suave); border: 1px solid var(--ok); }
   .msg.aviso { display: block; color: var(--aviso); background: var(--aviso-suave); border: 1px solid var(--aviso); }
+  #ob-pendencias tr.vencida td:last-child { color: var(--perigo); font-weight: 600; }   /* F040 obra */
+  #ob-dias label { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; }   /* F040 obra */
+  #ob-dias input { width: auto; height: auto; margin: 0; }
+  #ob-calendario { border: 1px solid var(--linha-forte); border-radius: 8px; padding: 10px 12px; }
 
   /* tabelas */
   .tabela-rolagem { overflow-x: auto; }
@@ -335,6 +339,37 @@
           <div id="p-msg" class="msg"></div>
         </div>
       </div>
+      <!-- F040 (5º lote) · Padrão de documentos (camada b do memorial: empresa, normas por tipo de escopo, documentos exigidos,
+           responsabilidades, entrega) e estilo padrão da organização — regras em _compartilhado/padrao-documentos.ts; o servidor revalida
+           (ação set_documentos_organizacao). O Gestor da organização também edita pelo app (organizacao_documentos). -->
+      <div class="cartao" id="dc-cartao" hidden>
+        <div class="cabeca"><h3>Padrão de documentos</h3></div>
+        <p class="pequeno suave" style="margin-top:0">Configurado uma vez por organização e reaproveitado em todo memorial descritivo. Vale na próxima renovação da licença do app. Uma linha por item; nas normas e nos documentos, os campos vão separados por “|”.</p>
+        <form id="dc-form">
+          <div class="linha">
+            <div class="campo"><label for="dc-org">Organização</label><select id="dc-org"></select></div>
+            <div class="campo" style="flex:0 1 220px"><label for="dc-estilo">Estilo padrão (id; vazio = nenhum)</label><input id="dc-estilo" maxlength="64" placeholder="estilo-exemplo"></div>
+          </div>
+          <h3 style="margin-top:12px">Empresa</h3>
+          <div class="linha">
+            <div class="campo"><label for="dc-razao">Razão social</label><input id="dc-razao" maxlength="200"></div>
+            <div class="campo" style="flex:0 1 200px"><label for="dc-cnpj">CNPJ</label><input id="dc-cnpj" maxlength="20" placeholder="00.000.000/0000-00" inputmode="numeric"></div>
+          </div>
+          <div class="linha">
+            <div class="campo"><label for="dc-endereco">Endereço</label><input id="dc-endereco" maxlength="300"></div>
+            <div class="campo" style="flex:0 1 220px"><label for="dc-cidade">Cidade</label><input id="dc-cidade" maxlength="120"></div>
+          </div>
+          <div class="campo"><label for="dc-normas">Normas — id | texto | tipos de escopo (<span id="dc-tipos">mecanico, civil, eletrico</span>)</label><textarea id="dc-normas" rows="4" placeholder="nr-12 | NR-12 Segurança em máquinas | mecanico, eletrico"></textarea></div>
+          <div class="campo"><label for="dc-documentos">Documentos exigidos do prestador — id | texto | quando (opcional)</label><textarea id="dc-documentos" rows="4" placeholder="art | ART do responsável técnico | antes do início"></textarea></div>
+          <div class="linha">
+            <div class="campo"><label for="dc-contratada">Responsabilidades da contratada</label><textarea id="dc-contratada" rows="4"></textarea></div>
+            <div class="campo"><label for="dc-contratante">Responsabilidades da contratante</label><textarea id="dc-contratante" rows="4"></textarea></div>
+          </div>
+          <div class="campo"><label for="dc-entrega">Entrega e aceite (procedimento)</label><textarea id="dc-entrega" rows="3" placeholder="Teste a seco"></textarea></div>
+          <div class="linha"><button class="primario" type="submit" id="dc-salvar">Salvar padrão</button><button type="button" id="dc-limpar">Apagar padrão</button></div>
+        </form>
+        <div id="dc-msg" class="msg"></div>
+      </div>
     </section>
 
     <!-- ══ Pessoas e assentos: criar pessoa (S1 senha provisória), lista agrupada por organização (F8), papel (A1/F6a), vínculo (N), extras e Equipe (lote 5) -->
@@ -496,6 +531,26 @@
           <p class="pequeno suave" style="margin:12px 0 0" id="op-conexao"></p>
           <p class="pequeno" style="margin:8px 0 0"><button type="button" class="link" id="op-trocar">Trocar projeto Supabase</button> · <button type="button" class="link" id="op-recarregar">Recarregar tudo</button></p>
         </div>
+      </div>
+      <!-- F040 · OBRA (0.4.2): calendário e pendências por projeto, lidos COMO A CONTA LOGADA (RPCs ob_projetos/ob_lista/ob_calendario).
+           A equipe sem organização não vê obra de cliente (AGENTS › Segurança); só o calendário se edita aqui (quem edita na planta). -->
+      <div class="cartao" id="ob-cartao" hidden>
+        <h3>Obra · calendário e pendências</h3>
+        <p class="pequeno suave" id="ob-aviso">Mostra só as obras que esta conta vê como membro de uma organização (a planta ou um fornecedor vencedor). A equipe não vê obras de clientes.</p>
+        <div class="linha compacta">
+          <div class="campo" style="flex:1 1 220px; min-width:0"><label for="ob-projeto">Projeto</label><select id="ob-projeto" style="max-width:100%"></select></div>
+          <button type="button" id="ob-atualizar" class="mini">Atualizar</button>
+        </div>
+        <div class="resumo" id="ob-resumo"></div>
+        <fieldset id="ob-calendario" class="campo" style="margin-top:10px; min-width:0">
+          <legend>Dias úteis da obra</legend>
+          <div class="linha compacta" id="ob-dias" style="flex-wrap:wrap"></div>
+          <div class="campo" style="margin-top:8px"><label for="ob-feriados">Feriados (um por linha, AAAA-MM-DD)</label><textarea id="ob-feriados" rows="3" spellcheck="false"></textarea></div>
+          <div class="linha"><button type="button" id="ob-salvar" class="primario">Salvar calendário</button></div>
+        </fieldset>
+        <h3 style="margin-top:14px">Pendências</h3>
+        <div class="tabela-rolagem"><table id="ob-pendencias"><thead><tr><th>Pendência</th><th>Escopo</th><th>Dono</th><th>Prazo</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
+        <div id="ob-msg" class="msg"></div>
       </div>
     </section>
   </section>
@@ -673,12 +728,14 @@ async function carrega() {
   preencheNovo(); preencheFiltros();   // F8
   desenhaOrgs();
   desenhaPerfis();   // U1: perfil da organização (depois da lista de organizações: põe o selo do nível nela)
+  desenhaDocumentos();   // F040: padrão de documentos
   desenha();
   desenhaLicencas();   // F031-E: plano/teste por organização e computadores
   desenhaOperacao();
   carregaPedidos();
   carregaCatalogos();   // U3
   carregaVitrine();   // F2
+  carregaObra().catch(() => { $('ob-cartao').hidden = true; });   // F040 obra
 }
 /** termo da busca global (topo): vale em todas as abas */
 const termoBusca = () => $('f-busca').value.trim().toLowerCase();
@@ -1119,6 +1176,80 @@ $('p-form').onsubmit = async (e) => {
   try { await chamaAdmin(corpo); avisa('p-msg', `Perfil salvo (${nomeNivel(n)}). Vale na próxima renovação da licença do app.`, 'ok'); await carrega(); }
   catch (err) { avisa('p-msg', explica(err)); }
   $('p-salvar').disabled = false;
+};
+
+// ───── F040 (5º lote) · PADRÃO DE DOCUMENTOS e estilo padrão da organização (camada b do memorial). Os tipos de escopo vêm do servidor
+// (`listar.tiposNorma`, de _compartilhado/padrao-documentos.ts); aqui só a leitura das linhas e a primeira conferência — o servidor revalida
+// tudo (CNPJ com dígito verificador, ids, limites) e devolve a mensagem do campo.
+const RE_ID_DOC = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const linhasDe = (t) => t.split('\n').map((x) => x.trim()).filter(Boolean);
+const juntaLinhas = (l) => (l || []).join('\n');
+function desenhaDocumentos() {
+  const orgs = (dados && dados.organizacoes) || [];
+  $('dc-cartao').hidden = !dados || dados.documentosDisponivel !== true || !orgs.length;
+  if ($('dc-cartao').hidden) return;
+  const atual = orgs.some((o) => o.id === $('dc-org').value) ? $('dc-org').value : orgs[0].id;
+  opcoes($('dc-org'), orgs.map((o) => ({ id: o.id, nome: o.nome })), atual);
+  $('dc-tipos').textContent = (dados.tiposNorma || []).map((t) => t.id).join(', ');
+  preencheDocumentos();
+}
+function preencheDocumentos() {
+  const o = orgDe($('dc-org').value);
+  if (!o) return;
+  const p = o.padrao_documentos || { empresa: {}, normas: [], documentosExigidos: [], responsabilidades: {}, entrega: [] };
+  $('dc-estilo').value = o.estilo_padrao || '';
+  $('dc-razao').value = p.empresa.razaoSocial || ''; $('dc-cnpj').value = p.empresa.cnpj || '';
+  $('dc-endereco').value = p.empresa.endereco || ''; $('dc-cidade').value = p.empresa.cidade || '';
+  $('dc-normas').value = juntaLinhas(p.normas.map((n) => `${n.id} | ${n.texto} | ${n.tipos.join(', ')}`));
+  $('dc-documentos').value = juntaLinhas(p.documentosExigidos.map((d) => `${d.id} | ${d.texto}${d.quando ? ' | ' + d.quando : ''}`));
+  $('dc-contratada').value = juntaLinhas(p.responsabilidades.contratada); $('dc-contratante').value = juntaLinhas(p.responsabilidades.contratante);
+  $('dc-entrega').value = juntaLinhas(p.entrega);
+}
+/** formulário → padrão (ou a mensagem do primeiro problema) */
+function leDocumentos() {
+  const tipos = (dados.tiposNorma || []).map((t) => t.id);
+  const normas = [], documentosExigidos = [];
+  for (const [i, l] of linhasDe($('dc-normas').value).entries()) {
+    const [id, texto, ts] = l.split('|').map((x) => x.trim());
+    const lt = (ts || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (!RE_ID_DOC.test(id || '')) return `Norma ${i + 1}: id em minúsculas, números e hífen (ex.: nr-12).`;
+    if (!texto) return `Norma ${i + 1}: falta o texto.`;
+    if (!lt.length || lt.some((t) => !tipos.includes(t))) return `Norma ${i + 1}: tipos de escopo entre ${tipos.join(', ')}.`;
+    normas.push({ id, texto, tipos: lt });
+  }
+  for (const [i, l] of linhasDe($('dc-documentos').value).entries()) {
+    const [id, texto, quando] = l.split('|').map((x) => x.trim());
+    if (!RE_ID_DOC.test(id || '')) return `Documento ${i + 1}: id em minúsculas, números e hífen (ex.: art).`;
+    if (!texto) return `Documento ${i + 1}: falta o texto.`;
+    documentosExigidos.push(quando ? { id, texto, quando } : { id, texto });
+  }
+  return {
+    empresa: { razaoSocial: $('dc-razao').value.trim(), cnpj: $('dc-cnpj').value.trim(), endereco: $('dc-endereco').value.trim(), cidade: $('dc-cidade').value.trim() },
+    normas, documentosExigidos,
+    responsabilidades: { contratada: linhasDe($('dc-contratada').value), contratante: linhasDe($('dc-contratante').value) },
+    entrega: linhasDe($('dc-entrega').value),
+  };
+}
+$('dc-org').onchange = () => { avisa('dc-msg', ''); preencheDocumentos(); };
+$('dc-form').onsubmit = async (e) => {
+  e.preventDefault();
+  avisa('dc-msg', '');
+  const padrao = leDocumentos();
+  if (typeof padrao === 'string') return avisa('dc-msg', padrao);
+  $('dc-salvar').disabled = true;
+  try {
+    await chamaAdmin({ acao: 'set_documentos_organizacao', organizacao: $('dc-org').value, padrao, estiloPadrao: $('dc-estilo').value.trim() || null });
+    await carrega();
+    avisa('dc-msg', 'Padrão de documentos salvo. Vale na próxima renovação da licença do app.', 'ok');
+  } catch (err) { avisa('dc-msg', explica(err)); }
+  finally { $('dc-salvar').disabled = false; }
+};
+$('dc-limpar').onclick = async () => {
+  const o = orgDe($('dc-org').value);
+  if (!o) return;
+  if (!(await caixa(`Apagar o padrão de documentos de “${o.nome}”? Os memoriais novos saem sem a camada da organização.`, 'Apagar'))) return;
+  try { await chamaAdmin({ acao: 'set_documentos_organizacao', organizacao: o.id, padrao: null }); await carrega(); avisa('dc-msg', 'Padrão apagado.', 'ok'); }
+  catch (err) { avisa('dc-msg', explica(err)); }
 };
 
 // C · teste grátis com prazo (perfis.teste_ate = último dia, inclusive, fuso de Brasília) — mesmas regras de
@@ -1572,6 +1703,62 @@ function desenhaOperacao() {
   let host = url; try { host = new URL(url).host; } catch {}
   $('op-conexao').textContent = `Projeto ${host} · funções admin e licenca · painel ${hospedado ? 'hospedado em ' + location.host : 'aberto como arquivo local'} · dados lidos ${carregadoEm ? carregadoEm.toLocaleTimeString('pt-BR') : '—'}.`;
 }
+// ───── F040 · Obra (aba Operação): calendário e pendências por projeto, COMO A CONTA LOGADA (RPCs; a RLS decide). Sem a migração
+// 20261107120000_f040o_obra o cartão fica escondido. Só o calendário se edita (ob_calendario: quem edita na organização dona).
+const DIAS_OBRA = [[1, 'seg'], [2, 'ter'], [3, 'qua'], [4, 'qui'], [5, 'sex'], [6, 'sáb'], [7, 'dom']];
+const ESTADO_PENDENCIA = { a_fazer: 'A fazer', em_andamento: 'Em andamento', feita: 'Feita', vencida: 'Vencida' };
+let obras = [], obraAtual = null;
+$('ob-dias').innerHTML = DIAS_OBRA.map(([n, t]) => `<label class="pequeno"><input type="checkbox" value="${n}" id="ob-dia-${n}"> ${t}</label>`).join(' ');
+async function carregaObra() {
+  avisa('ob-msg', '');
+  const r = await sb.rpc('ob_projetos');
+  if (r.error) { $('ob-cartao').hidden = true; return; }   // banco sem a migração da obra
+  $('ob-cartao').hidden = false;
+  obras = r.data || [];
+  const antes = $('ob-projeto').value;
+  $('ob-projeto').innerHTML = obras.length ? obras.map((o) => `<option value="${esc(o.projeto)}">${esc(o.nome)} · ${esc(o.planta)}${o.acesso === 'fornecedor' ? ' (fornecedor)' : ''}</option>`).join('')
+    : '<option value="">nenhuma obra visível para esta conta</option>';
+  if (obras.some((o) => o.projeto === antes)) $('ob-projeto').value = antes;
+  return desenhaObra();
+}
+async function desenhaObra() {
+  const id = $('ob-projeto').value;
+  const o = obras.find((x) => x.projeto === id);
+  $('ob-resumo').innerHTML = o ? [[o.etapas, 'etapas'], [o.pendencias_abertas, 'pendências abertas'], [o.pendencias_vencidas, 'vencidas'], [o.documentos_pendentes, 'documentos pendentes']]
+    .map(([n, t]) => `<div><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join('') : '';
+  $('ob-calendario').hidden = !o;
+  const corpo = $('ob-pendencias').querySelector('tbody');
+  if (!o) { corpo.innerHTML = '<tr><td colspan="5" class="suave pequeno">—</td></tr>'; obraAtual = null; return; }
+  const r = await sb.rpc('ob_lista', { p_projeto: id });
+  if (r.error) return avisa('ob-msg', explica(r.error));
+  obraAtual = r.data || {};
+  const cal = obraAtual.calendario || { dias_uteis: [1, 2, 3, 4, 5], feriados: [] };
+  for (const [n] of DIAS_OBRA) $('ob-dia-' + n).checked = (cal.dias_uteis || []).includes(n);
+  $('ob-feriados').value = (cal.feriados || []).join('\n');
+  const pode = obraAtual.pode_editar === true;
+  for (const [n] of DIAS_OBRA) $('ob-dia-' + n).disabled = !pode;
+  $('ob-feriados').readOnly = !pode; $('ob-salvar').hidden = !pode;
+  const codigos = Object.fromEntries((obraAtual.escopos || []).map((e) => [e.id, e.codigo + ' · ' + e.nome]));
+  const rotulo = (e) => (e ? codigos[e] || 'escopo' : 'geral');
+  const ps = (obraAtual.pendencias || []).filter((p) => casaTexto(p.descricao, p.estado));
+  corpo.innerHTML = ps.length ? ps.map((p) => `<tr${p.estado === 'vencida' ? ' class="vencida"' : ''}><td>${esc(p.descricao)}</td><td>${esc(rotulo(p.escopo))}</td><td>${p.dono === 'planta' ? 'Planta' : 'Fornecedor'}</td><td>${esc(p.prazo ? data(p.prazo + 'T12:00:00') : '—')}</td><td>${esc(ESTADO_PENDENCIA[p.estado] || p.estado)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="suave pequeno">Nenhuma pendência.</td></tr>';
+}
+$('ob-projeto').onchange = () => desenhaObra();
+$('ob-atualizar').onclick = () => carregaObra();
+$('ob-salvar').onclick = async () => {
+  const dias = DIAS_OBRA.map(([n]) => n).filter((n) => $('ob-dia-' + n).checked);
+  const feriados = $('ob-feriados').value.split(/\s+/).map((x) => x.trim()).filter(Boolean);
+  if (!dias.length) return avisa('ob-msg', 'Marque pelo menos um dia útil.');
+  const ruim = feriados.findIndex((f) => !/^\d{4}-\d{2}-\d{2}$/.test(f));
+  if (ruim >= 0) return avisa('ob-msg', `Feriado na linha ${ruim + 1}: use AAAA-MM-DD.`);
+  $('ob-salvar').disabled = true;
+  const r = await sb.rpc('ob_calendario', { p_projeto: $('ob-projeto').value, p_calendario: { dias_uteis: dias, feriados } });
+  $('ob-salvar').disabled = false;
+  if (r.error) return avisa('ob-msg', r.error.message || explica(r.error));
+  await carregaObra();
+  avisa('ob-msg', 'Calendário salvo.', 'ok');
+};
 // busca global: redesenha o que está carregado (sem nova chamada ao servidor)
 $('f-busca').oninput = () => { if (!dados) return; desenhaOrgs(); desenhaPerfis(); desenha(); desenhaLicencas(); desenhaPedidos(); carregaCatalogosLocal(); };
 function carregaCatalogosLocal() { if (!$('cf-cartao').hidden && catalogosFab.length) carregaCatalogos(); if (!$('vt-cartao').hidden) carregaVitrine(); }
