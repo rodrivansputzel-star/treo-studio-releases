@@ -10,7 +10,9 @@
      Pages do repositório de releases. Fala com as funções `admin` e `licenca` do Supabase (mesmas ações e campos de sempre).
      Também serve como página de "definir senha" dos convites/recuperação quando hospedado (docs/S1-SERVIDOR.md).
      F031-E (D69): abas · tema claro/escuro · busca global · sem nível Parceiro · sem seletor de edição · nenhum diálogo nativo. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- P14: versão FIXA (a mesma do app, package-lock) e integridade conferida pelo navegador: o arquivo é o `dist/umd/supabase.js` do pacote publicado.
+     Para atualizar: trocar a versão e o hash juntos (openssl dgst -sha384 -binary node_modules/@supabase/supabase-js/dist/umd/supabase.js | openssl base64 -A). -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <style>
   :root {
     --fundo: #f3f4f6; --cartao: #ffffff; --texto: #1f2933; --suave: #5f6b78; --linha: #dfe3e8; --linha-forte: #c4cad2;
@@ -536,7 +538,7 @@
            A equipe sem organização não vê obra de cliente (AGENTS › Segurança); só o calendário se edita aqui (quem edita na planta). -->
       <div class="cartao" id="ob-cartao" hidden>
         <h3>Obra · calendário e pendências</h3>
-        <p class="pequeno suave" id="ob-aviso">Mostra só as obras que esta conta vê como membro de uma organização (a planta ou um fornecedor vencedor). A equipe não vê obras de clientes.</p>
+        <p class="pequeno suave" id="ob-aviso">Mostra só as obras que esta conta vê como membro de uma organização (o cliente ou um fornecedor vencedor). A equipe não vê obras de clientes.</p>
         <div class="linha compacta">
           <div class="campo" style="flex:1 1 220px; min-width:0"><label for="ob-projeto">Projeto</label><select id="ob-projeto" style="max-width:100%"></select></div>
           <button type="button" id="ob-atualizar" class="mini">Atualizar</button>
@@ -955,10 +957,17 @@ async function acaoOrg(ev) {
   const o = orgDe(b.dataset.id);
   if (!o) return;
   if (b.dataset.o === 'editar') { editaOrg(o); $('o-cartao').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  // P14 (A3): excluir apaga em cascata e não tem volta. O servidor conta o que existe; com projeto, proposta ou convite ele recusa.
   const n = membrosDe(o.id).length;
-  if (!(await caixa(`Excluir a organização “${o.nome}”?\n${n} pessoa(s) vinculada(s) ficam sem organização (só olhar) e sem personalização na próxima renovação da licença. Os projetos não são apagados.`, 'Excluir'))) return;
+  let rs;
+  try { rs = await chamaAdmin({ acao: 'resumo_organizacao', organizacao: o.id }); } catch (err) { return avisa('og-msg', explica(err)); }
+  if (!rs.pode_excluir) return avisa('og-msg', `“${o.nome}” não pode ser excluída pelo painel: tem ${(rs.bloqueios || []).join(', ')}. Excluir apagaria tudo isso sem volta, inclusive propostas de fornecedores. Bloqueie as pessoas; a exclusão definitiva é do operador, com cópia dos dados antes.`);
+  const extras = [['blocos', 'bloco(s) próprio(s)'], ['precos', 'lista(s) de preços'], ['custos', 'base(s) de custos'], ['cadastro', 'registro(s) do cadastro'], ['anexos', 'anexo(s)']].filter(([k]) => rs.resumo && rs.resumo[k]).map(([k, t]) => `${rs.resumo[k]} ${t}`);
+  const c = await caixa(`Excluir DEFINITIVAMENTE a organização “${o.nome}”? Não há como desfazer.\n${n} pessoa(s) vinculada(s) ficam sem organização (só olhar).${extras.length ? '\nTambém serão apagados: ' + extras.join(', ') + '.' : ''}\nPara confirmar, digite o nome da organização: ${o.nome}`, 'Excluir', { campo: { placeholder: o.nome } });
+  if (c === false) return;
+  if (c !== String(o.nome).trim()) return avisa('og-msg', 'Não excluída: o nome digitado não confere.');
   b.disabled = true;
-  try { await chamaAdmin({ acao: 'excluir_organizacao', organizacao: o.id }); if ($('o-id').value === o.id) limpaOrg(); avisa('og-msg', `“${o.nome}” excluída.`, 'ok'); await carrega(); }
+  try { await chamaAdmin({ acao: 'excluir_organizacao', organizacao: o.id, confirmacao: c }); if ($('o-id').value === o.id) limpaOrg(); avisa('og-msg', `“${o.nome}” excluída.`, 'ok'); await carrega(); }
   catch (err) { avisa('og-msg', explica(err)); b.disabled = false; }
 }
 $('og-corpo').addEventListener('click', acaoOrg);
@@ -1082,7 +1091,7 @@ $('vt-ord-salvar').onclick = async () => {
 };
 
 // ───── U1 · perfil da organização. Níveis, canais e temas curados vêm do servidor (`listar`: niveis, canais, temasCurados — gerados de
-// _compartilhado/perfil-organizacao.ts e temas-curados.ts, sem cópia aqui); o servidor revalida tudo (ação set_perfil_organizacao).
+// _compartilhado/perfil-organizacao.ts e, desde o P7, da tabela temas_curados — sem cópia aqui); o servidor revalida tudo (ação set_perfil_organizacao).
 // D69: sem nível Parceiro — o seletor só oferece Padrão e Grupo; uma organização ainda em Parceiro aparece como "antigo" até ser trocada.
 const NIVEIS_OFERECIDOS = ['padrao', 'grupo'];
 const REGRA_NIVEL = {
@@ -1269,7 +1278,18 @@ function situacaoTeste(u) {
 }
 function situacao(u) {
   if (u.bloqueado) return '<span class="estado bloq">Bloqueado</span>';
-  if (u.trocar_senha) return '<span class="estado pend" title="Ainda não criou a própria senha">Senha provisória</span>';
+  // P14: "Sessões antigas não encerradas" aparece JUNTO das outras etiquetas (conta atestada fica com senha provisória: as duas valem)
+  const pendentes = u.sessoes_antigas_pendentes ? ' <span class="estado pend" title="O e-mail foi confirmado, mas o servidor não conseguiu encerrar as sessões antigas da conta. Elas não leem nem gravam nada da organização e são recusadas pelas funções do servidor; o token delas dura até vencer (a validade configurada no Supabase, normalmente 1 hora).">Sessões antigas não encerradas</span>' : '';
+  if (u.trocar_senha) return '<span class="estado pend" title="Ainda não criou a própria senha">Senha provisória</span>' + pendentes;
+  if (pendentes) return '<span class="estado ok">Ativo</span>' + pendentes;
+  // P14 (A1): conta criada pelo código de um convite; ninguém provou ser o dono do e-mail (só vale para quem a apresentou)
+  if (u.email_nao_provado) {
+    const o = u.email_nao_provado, de = o.avalista_nome ? ' de ' + esc(o.avalista_nome) : '';
+    const origem = o.origem === 'convite_fornecedor' ? 'Conta criada pelo código de um convite de fornecedor' + de
+      : o.origem === 'convite_membro' ? 'Conta criada pelo código de um convite de membro' + de
+      : 'Conta cujo e-mail ninguém conferiu (criada no painel com senha provisória, à mão no Supabase, ou sem origem registrada)';
+    return '<span class="estado pend" title="' + origem + '. Convites enviados ao e-mail só entram com o código e a conta não convida equipe, até a pessoa entrar pelo código enviado ao e-mail' + (o.outros_membros ? ' (não basta: a organização tem outros membros)' : '') + ' ou a equipe atestar.">E-mail não conferido</span>';
+  }
   if (!u.confirmado_em && !u.ultimo_login) return '<span class="estado pend">Convite pendente</span>';
   return '<span class="estado ok">Ativo</span>';
 }
@@ -1449,6 +1469,8 @@ function linhaUsuario(u) {
       <td class="acoes-col"><div class="acoes">
         <button class="mini" type="button" data-a="renomear_usuario" data-u="${esc(u.id)}" data-nome="${esc(u.nome || '')}">Renomear</button>
         <button class="mini" type="button" data-a="redefinir_senha" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="Gera uma nova senha provisória; o app pede para trocar no próximo login">Redefinir senha</button>
+        ${u.email_nao_provado ? `<button class="mini" type="button" data-a="atestar_email" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="Use depois de confirmar com a pessoa, por outro canal, que a conta é dela. Gera uma senha provisória nova e encerra as sessões da conta.">Atestar e-mail</button>` : ''}
+        ${u.email_nao_provado && u.organizacao ? `<button class="mini" type="button" data-a="atestar_email" data-sair="1" data-u="${esc(u.id)}" data-email="${esc(u.email)}" title="A pessoa confirma que a conta é dela, mas NÃO reconhece a organização em que a conta está: a conta sai da organização.">Atestar e tirar da organização</button>` : ''}
         <button class="mini ${u.bloqueado ? '' : 'perigo'}" type="button" data-a="bloquear_usuario" data-u="${esc(u.id)}" data-v="${u.bloqueado ? 'false' : 'true'}">${u.bloqueado ? 'Desbloquear' : 'Bloquear'}</button>
         ${u.admin ? '' : `<button class="mini perigo" type="button" data-a="excluir_usuario" data-u="${esc(u.id)}" data-email="${esc(u.email)}">Excluir</button>`}
       </div></td></tr>`;
@@ -1597,6 +1619,22 @@ async function acaoGeral(ev, msgId) {
     if (!n && !(await caixa('Tirar o prazo de teste desta pessoa? A licença volta a sair normalmente no plano dela, na próxima renovação.', 'Tirar o prazo'))) return;
   }
   if (a === 'redefinir_senha' && !(await caixa(`Gerar uma nova senha provisória para ${b.dataset.email}?\nA senha atual deixa de valer. A licença já emitida continua até vencer; no próximo login o app pede para criar uma senha nova.`, 'Gerar senha'))) return;
+  if (a === 'atestar_email') {
+    const sair = b.dataset.sair === '1';
+    corpo.sair = sair;
+    // D146: o que sobra na organização se a conta sair dela
+    let sobra = '';
+    if (sair) {
+      const eu = (dados.usuarios || []).find((x) => x.id === b.dataset.u), org = eu && eu.organizacao;
+      const outros = (dados.usuarios || []).filter((x) => org && x.organizacao === org && x.id !== b.dataset.u && !x.bloqueado);   // conta bloqueada não conta como "quem sobra"
+      const nomeOrg = ((dados.organizacoes || []).find((o) => o.id === org) || {}).nome || 'a organização';
+      const gestores = outros.filter((x) => x.papel === 'gestor').length;
+      sobra = !outros.length ? `\nATENÇÃO: “${nomeOrg}” fica VAZIA (esta conta é a única pessoa nela).`
+        : !gestores ? `\nATENÇÃO: “${nomeOrg}” fica SEM GESTOR. Sobram ${outros.length} pessoa(s): ${outros.map((x) => x.email).join(', ')}. Defina um Gestor depois, ou bloqueie essas contas se a organização não for de ninguém conhecido.`
+        : `\nEm “${nomeOrg}” sobram ${outros.length} pessoa(s), ${gestores} Gestor(es): ${outros.map((x) => x.email).join(', ')}.`;
+    }
+    if (!(await caixa(`Atestar que ${b.dataset.email} é de quem usa esta conta?\nFaça isso só depois de confirmar com a pessoa por outro canal (telefone, e-mail da empresa) ${sair ? 'que a conta é dela. Ela NÃO reconhece a organização em que a conta está: a conta sai dessa organização.' : 'DUAS coisas: que a conta é dela e que a organização em que a conta está, com os membros que tem, é a empresa dela.'}${sobra}\nConvites de membro ainda pendentes dessa organização são cancelados.\nA pessoa receberá uma senha provisória (você a entrega); a senha antiga deixa de valer e as sessões abertas são encerradas. A partir daí, convites de qualquer organização a esse e-mail chegam à conta, e ela pode convidar equipe.`, sair ? 'Atestar e tirar' : 'Atestar'))) return;
+  }
   if (a === 'remover_maquina' && !(await caixa(`Remover o computador “${b.dataset.nome}” da lista? Libera a vaga; a licença dele vale até vencer.`, 'Remover'))) return;
   if (a === 'excluir_usuario') {
     const c = await caixa(`Excluir DEFINITIVAMENTE a conta e todos os dados (perfil, computadores, histórico)?\nPara confirmar, digite o e-mail: ${b.dataset.email}`, 'Excluir', { campo: { placeholder: b.dataset.email } });
@@ -1608,6 +1646,7 @@ async function acaoGeral(ev, msgId) {
   try {
     const r = await chamaAdmin(corpo);
     if (a === 'redefinir_senha') { abre('pessoas'); mostraSenha('Nova senha provisória de ' + b.dataset.email + ':', r.senha); }
+    if (a === 'atestar_email') { abre('pessoas'); mostraSenha('E-mail atestado. Senha provisória de ' + b.dataset.email + (r.sessoes_encerradas ? ' (sessões antigas encerradas):' : ' (ATENÇÃO: o servidor não encerrou as sessões antigas. Elas não leem nem gravam nada da organização e são recusadas pelas funções do servidor; o token delas dura até vencer):'), r.senha); }
     await carrega();
   } catch (e) { avisa(msgId, explica(e)); b.disabled = false; }
 }
@@ -1741,7 +1780,7 @@ async function desenhaObra() {
   const codigos = Object.fromEntries((obraAtual.escopos || []).map((e) => [e.id, e.codigo + ' · ' + e.nome]));
   const rotulo = (e) => (e ? codigos[e] || 'escopo' : 'geral');
   const ps = (obraAtual.pendencias || []).filter((p) => casaTexto(p.descricao, p.estado));
-  corpo.innerHTML = ps.length ? ps.map((p) => `<tr${p.estado === 'vencida' ? ' class="vencida"' : ''}><td>${esc(p.descricao)}</td><td>${esc(rotulo(p.escopo))}</td><td>${p.dono === 'planta' ? 'Planta' : 'Fornecedor'}</td><td>${esc(p.prazo ? data(p.prazo + 'T12:00:00') : '—')}</td><td>${esc(ESTADO_PENDENCIA[p.estado] || p.estado)}</td></tr>`).join('')
+  corpo.innerHTML = ps.length ? ps.map((p) => `<tr${p.estado === 'vencida' ? ' class="vencida"' : ''}><td>${esc(p.descricao)}</td><td>${esc(rotulo(p.escopo))}</td><td>${p.dono === 'planta' ? 'Cliente' : 'Fornecedor'}</td><td>${esc(p.prazo ? data(p.prazo + 'T12:00:00') : '—')}</td><td>${esc(ESTADO_PENDENCIA[p.estado] || p.estado)}</td></tr>`).join('')
     : '<tr><td colspan="5" class="suave pequeno">Nenhuma pendência.</td></tr>';
 }
 $('ob-projeto').onchange = () => desenhaObra();
